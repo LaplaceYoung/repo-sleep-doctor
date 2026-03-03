@@ -7,7 +7,7 @@ const { compareWithBaseline, createOnlyNewReport, loadBaseline } = require("./ba
 const { scanRepository } = require("./scanner");
 const { formatReport, shouldFail } = require("./reporters");
 
-const VALID_FORMATS = new Set(["text", "json", "markdown", "md", "sarif", "html"]);
+const VALID_FORMATS = new Set(["text", "json", "markdown", "md", "sarif", "html", "junit"]);
 const VALID_FAIL_ON = new Set(["none", "p0", "p1", "p2"]);
 
 function printHelp() {
@@ -19,7 +19,7 @@ Usage:
   node src/cli.js scan [path] [options]
 
 Options:
-  --format <text|json|markdown|sarif|html>  Output format (default: text)
+  --format <text|json|markdown|sarif|html|junit>  Output format (default: text)
   --out <file>                              Write report to file
   --config <file>                           Use custom config path
   --max-files <number>                      Limit scanned files

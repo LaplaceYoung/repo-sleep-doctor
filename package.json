@@ -10,6 +10,7 @@
     "lint": "node scripts/lint.js",
     "scan": "node src/cli.js . --fail-on none",
     "scan:sarif": "node src/cli.js . --format sarif --out reports/scan.sarif --fail-on none",
+    "scan:junit": "node src/cli.js . --format junit --out reports/scan.junit.xml --fail-on none",
     "scan:html": "node src/cli.js . --format html --out reports/scan.html --fail-on none",
     "example": "node src/cli.js test/fixtures/bad-repo --format text --fail-on none",
     "test": "node --test test/scanner.test.js"

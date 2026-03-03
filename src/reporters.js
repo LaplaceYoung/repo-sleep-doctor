@@ -19,6 +19,15 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function escapeXml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 function formatComparisonText(report) {
   if (!report.baseline) {
     return [];
@@ -234,6 +243,37 @@ function formatSarif(report) {
   return JSON.stringify(sarif, null, 2);
 }
 
+function formatJunit(report) {
+  const testcases =
+    report.findings.length === 0
+      ? [
+          `<testcase classname="repo-sleep-doctor" name="scan-clean"><system-out>No findings detected.</system-out></testcase>`
+        ]
+      : report.findings.map((finding) => {
+          const location = findingLocation(finding);
+          const testcaseName = `${finding.id} ${location}`;
+          const failureMessage = `${finding.title}. ${finding.message}`;
+          const suggestion = finding.suggestion ? ` Suggestion: ${finding.suggestion}` : "";
+          return `<testcase classname="${escapeXml(finding.id)}" name="${escapeXml(testcaseName)}"><failure type="${escapeXml(
+            finding.severity.toUpperCase()
+          )}" message="${escapeXml(failureMessage)}">${escapeXml(
+            `${failureMessage}${suggestion}`
+          )}</failure></testcase>`;
+        });
+
+  const failures = report.findings.length;
+  const tests = Math.max(report.findings.length, 1);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="${tests}" failures="${failures}" errors="0" skipped="0" name="repo-sleep-doctor">
+  <testsuite name="repo-sleep-doctor" tests="${tests}" failures="${failures}" errors="0" skipped="0" timestamp="${escapeXml(
+    report.scannedAt
+  )}" time="${(report.durationMs / 1000).toFixed(3)}">
+    ${testcases.join("\n    ")}
+  </testsuite>
+</testsuites>`;
+}
+
 function severityChipClass(severity) {
   if (severity === "p0") return "sev sev-p0";
   if (severity === "p1") return "sev sev-p1";
@@ -379,6 +419,9 @@ function formatReport(report, format) {
   if (normalized === "html") {
     return formatHtml(report);
   }
+  if (normalized === "junit") {
+    return formatJunit(report);
+  }
   return formatText(report);
 }
 
@@ -388,5 +431,6 @@ module.exports = {
   formatMarkdown,
   formatSarif,
   formatHtml,
+  formatJunit,
   shouldFail
 };

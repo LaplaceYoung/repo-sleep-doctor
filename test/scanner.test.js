@@ -6,7 +6,7 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 
 const { compareWithBaseline, createOnlyNewReport, loadBaseline } = require("../src/baseline");
-const { formatSarif, formatMarkdown, shouldFail } = require("../src/reporters");
+const { formatSarif, formatMarkdown, formatJunit, shouldFail } = require("../src/reporters");
 const { scanRepository } = require("../src/scanner");
 
 const badRepo = path.join(__dirname, "fixtures", "bad-repo");
@@ -79,6 +79,16 @@ test("formatSarif returns valid sarif envelope", () => {
   assert.equal(sarif.runs.length > 0, true);
   assert.equal(Array.isArray(sarif.runs[0].results), true);
   assert.equal(sarif.runs[0].results.length, report.findings.length);
+});
+
+test("formatJunit returns valid junit-like xml payload", () => {
+  const report = scanRepository(badRepo, { maxFiles: 100 });
+  const xml = formatJunit(report);
+
+  assert.match(xml, /<testsuites/);
+  assert.match(xml, /<testsuite name="repo-sleep-doctor"/);
+  assert.match(xml, /<testcase /);
+  assert.match(xml, /<failure /);
 });
 
 test("formatMarkdown escapes table-breaking characters", () => {

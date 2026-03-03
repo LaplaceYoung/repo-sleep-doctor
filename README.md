@@ -42,6 +42,9 @@ npm run scan:sarif
 # HTML visual report
 npm run scan:html
 
+# JUnit XML report for CI test dashboards
+npm run scan:junit
+
 # only scan files changed since main
 node src/cli.js . --changed-since main --fail-on p1
 ```
@@ -54,7 +57,7 @@ node src/cli.js scan [path] [options]
 ```
 
 Options:
-- `--format <text|json|markdown|sarif|html>` output format, default `text`
+- `--format <text|json|markdown|sarif|html|junit>` output format, default `text`
 - `--out <file>` write formatted output to file
 - `--config <file>` use a custom config file path
 - `--max-files <number>` cap total scanned files

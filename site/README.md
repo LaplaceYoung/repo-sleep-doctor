@@ -10,12 +10,13 @@ npx serve site
 
 ## GitHub Pages (recommended for OSS)
 
-1. Push `site/` to your repository.
-2. In repo settings: `Pages` -> source `Deploy from a branch`.
-3. Select branch `main` and folder `/site`.
-4. Publish and bind a custom domain if needed.
+This repository already includes `.github/workflows/pages.yml`.
+
+1. In repository settings, open `Pages`.
+2. Set `Build and deployment` source to `GitHub Actions`.
+3. Push changes under `site/` (or run `Deploy Site` workflow manually).
+4. The default URL becomes `https://laplaceyoung.github.io/repo-sleep-doctor/`.
 
 ## Netlify / Vercel / Cloudflare Pages
 
 Use `site` as the publish directory.
-
