@@ -100,7 +100,7 @@ Create `.repo-sleep-doctor.json` in repository root:
 }
 ```
 
-Rule IDs currently exposed include:
+Rule IDs currently exposed include (details in [`docs/rules.md`](docs/rules.md)):
 - `merge-marker`
 - `private-key-block`
 - `aws-key`

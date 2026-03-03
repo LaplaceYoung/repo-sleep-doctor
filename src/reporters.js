@@ -151,25 +151,7 @@ function severityToSarifLevel(severity) {
   return "note";
 }
 
-const SARIF_RULE_DOCS = Object.freeze({
-  "merge-marker": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "private-key-block": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "aws-key": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "generic-secret": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "console-call": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  debugger: "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "print-call": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "todo-comment": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "large-file": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "missing-readme": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "readme-install": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "readme-usage": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "missing-build-script": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "missing-test-script": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "missing-lint-script": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "invalid-package-json": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
-  "missing-tests": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include"
-});
+const SARIF_RULE_DOC_BASE = "https://github.com/LaplaceYoung/repo-sleep-doctor/blob/main/docs/rules.md";
 
 function inferRuleTags(ruleId) {
   if (/(key|secret)/i.test(ruleId)) {
@@ -206,7 +188,7 @@ function formatSarif(report) {
         fullDescription: {
           text: finding.message
         },
-        helpUri: SARIF_RULE_DOCS[finding.id] || "https://github.com/LaplaceYoung/repo-sleep-doctor",
+        helpUri: `${SARIF_RULE_DOC_BASE}#${finding.id}`,
         defaultConfiguration: {
           level: severityToSarifLevel(finding.severity)
         },
