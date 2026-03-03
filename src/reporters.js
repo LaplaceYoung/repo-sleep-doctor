@@ -151,6 +151,48 @@ function severityToSarifLevel(severity) {
   return "note";
 }
 
+const SARIF_RULE_DOCS = Object.freeze({
+  "merge-marker": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "private-key-block": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "aws-key": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "generic-secret": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "console-call": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  debugger: "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "print-call": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "todo-comment": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "large-file": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "missing-readme": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "readme-install": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "readme-usage": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "missing-build-script": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "missing-test-script": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "missing-lint-script": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "invalid-package-json": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include",
+  "missing-tests": "https://github.com/LaplaceYoung/repo-sleep-doctor#rule-ids-currently-exposed-include"
+});
+
+function inferRuleTags(ruleId) {
+  if (/(key|secret)/i.test(ruleId)) {
+    return ["security", "secrets", "release-risk"];
+  }
+  if (/merge-marker/.test(ruleId)) {
+    return ["quality", "merge", "release-risk"];
+  }
+  if (/(console-call|debugger|print-call|todo-comment)/.test(ruleId)) {
+    return ["quality", "debug", "release-risk"];
+  }
+  if (/readme/.test(ruleId)) {
+    return ["documentation", "release-readiness"];
+  }
+  if (/(build|test|lint|package-json|missing-tests)/.test(ruleId)) {
+    return ["ci", "release-readiness"];
+  }
+  if (/large-file/.test(ruleId)) {
+    return ["repository-health", "release-readiness"];
+  }
+  return ["release-risk"];
+}
+
 function formatSarif(report) {
   const ruleMap = new Map();
   for (const finding of report.findings) {
@@ -164,11 +206,13 @@ function formatSarif(report) {
         fullDescription: {
           text: finding.message
         },
+        helpUri: SARIF_RULE_DOCS[finding.id] || "https://github.com/LaplaceYoung/repo-sleep-doctor",
         defaultConfiguration: {
           level: severityToSarifLevel(finding.severity)
         },
         properties: {
-          severity: finding.severity
+          severity: finding.severity,
+          tags: inferRuleTags(finding.id)
         }
       });
     }

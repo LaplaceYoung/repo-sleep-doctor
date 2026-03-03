@@ -8,8 +8,8 @@ function findingKey(finding) {
   const id = String(finding.id || "");
   const file = String(finding.file || "");
   const line = Number.isFinite(Number(finding.line)) ? Number(finding.line) : 0;
-  const message = String(finding.message || "");
-  return `${id}::${file}::${line}::${message}`;
+  const severity = String(finding.severity || "");
+  return `${id}::${severity}::${file}::${line}`;
 }
 
 function normalizeBaselineFindings(value) {

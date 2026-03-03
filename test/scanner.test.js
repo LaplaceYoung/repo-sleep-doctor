@@ -58,6 +58,38 @@ test("baseline comparison returns deterministic deltas", () => {
   assert.equal(newOnlyReport.findings.length, comparison.counts.new);
 });
 
+test("baseline comparison ignores message text-only changes", () => {
+  const currentReport = {
+    findings: [
+      {
+        id: "demo-rule",
+        severity: "p1",
+        file: "src/index.js",
+        line: 10,
+        message: "new wording"
+      }
+    ]
+  };
+  const baseline = {
+    path: "memory-baseline.json",
+    scannedAt: null,
+    findings: [
+      {
+        id: "demo-rule",
+        severity: "p1",
+        file: "src/index.js",
+        line: 10,
+        message: "old wording"
+      }
+    ]
+  };
+
+  const comparison = compareWithBaseline(currentReport, baseline);
+  assert.equal(comparison.counts.new, 0);
+  assert.equal(comparison.counts.unchanged, 1);
+  assert.equal(comparison.counts.resolved, 0);
+});
+
 test("loadBaseline reads json baseline file", () => {
   const report = scanRepository(goodRepo, { maxFiles: 100 });
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-"));
@@ -79,6 +111,10 @@ test("formatSarif returns valid sarif envelope", () => {
   assert.equal(sarif.runs.length > 0, true);
   assert.equal(Array.isArray(sarif.runs[0].results), true);
   assert.equal(sarif.runs[0].results.length, report.findings.length);
+  assert.equal(Array.isArray(sarif.runs[0].tool.driver.rules), true);
+  assert.equal(sarif.runs[0].tool.driver.rules.length > 0, true);
+  assert.equal(typeof sarif.runs[0].tool.driver.rules[0].helpUri, "string");
+  assert.equal(Array.isArray(sarif.runs[0].tool.driver.rules[0].properties.tags), true);
 });
 
 test("formatJunit returns valid junit-like xml payload", () => {
