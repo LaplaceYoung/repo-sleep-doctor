@@ -1,0 +1,5 @@
+<<<<<<< HEAD
+hidden
+=======
+still-hidden
+>>>>>>> branch

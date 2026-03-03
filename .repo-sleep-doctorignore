@@ -1,0 +1,2 @@
+# Local development fixtures are intentionally noisy and should not affect root scans.
+test/fixtures/

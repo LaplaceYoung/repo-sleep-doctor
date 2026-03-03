@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Repo Sleep Doctor | 发布风险扫描器</title>
+  <style>
+    :root {
+      --ink: #0f1f2f;
+      --muted: #4b6077;
+      --line: #c9d9e8;
+      --bg: #f4fbff;
+      --card: #ffffff;
+      --accent: #0d7ea2;
+      --accent-2: #f08b23;
+      --ok: #13795b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 2%, #d8f0fb 0%, transparent 36%),
+        radial-gradient(circle at 90% 16%, #ffe8cf 0%, transparent 30%),
+        var(--bg);
+      font-family: "IBM Plex Sans", "Noto Sans SC", "Segoe UI", sans-serif;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 20px 64px; }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      font-size: 18px;
+    }
+    .tag {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.8);
+    }
+    .hero {
+      border: 1px solid var(--line);
+      background: linear-gradient(145deg, #ffffff 0%, #f7fcff 65%, #fff5ec 100%);
+      border-radius: 20px;
+      padding: 26px;
+      box-shadow: 0 16px 42px rgba(10, 37, 66, 0.12);
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 5vw, 52px);
+      line-height: 1.08;
+    }
+    .hero p {
+      margin: 0;
+      max-width: 700px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 16px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      transition: transform .16s ease, box-shadow .16s ease;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(15, 31, 47, 0.1); }
+    .btn-primary { background: var(--accent); color: #fff; border-color: #0b6a89; }
+    .btn-secondary { color: var(--ink); background: #fff; }
+    .quick {
+      margin-top: 22px;
+      background: #0e1f31;
+      color: #e4eefb;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 13px;
+      overflow: auto;
+    }
+    .grid {
+      margin-top: 26px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .section-title {
+      margin: 36px 0 10px;
+      font-size: 24px;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .kpi {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .kpi .value { margin-top: 4px; font-size: 26px; font-weight: 700; color: var(--accent); }
+    .roadmap {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      color: #fff;
+    }
+    .p30 { background: var(--ok); }
+    .p60 { background: var(--accent); }
+    .p90 { background: var(--accent-2); }
+    footer {
+      margin-top: 32px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+    @media (max-width: 900px) {
+      .grid, .kpis, .roadmap { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      .grid, .kpis, .roadmap { grid-template-columns: 1fr; }
+      .hero p { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">Repo Sleep Doctor</div>
+      <div class="tag">Release Risk Scanner for Repositories</div>
+    </div>
+
+    <section class="hero">
+      <h1>上线前，不再“靠感觉”发版</h1>
+      <p>Repo Sleep Doctor 会在发布前自动扫描仓库风险：冲突标记、潜在密钥、调试残留、README/脚本/测试缺失，并输出可读报告与 SARIF。</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="https://github.com/" target="_blank" rel="noreferrer">查看 GitHub 仓库</a>
+        <a class="btn btn-secondary" href="../README.md">查看文档</a>
+      </div>
+      <pre class="quick">npm install
+node src/cli.js . --format html --out reports/scan.html --fail-on p1</pre>
+    </section>
+
+    <h2 class="section-title">核心能力</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>发布阻断识别</h3>
+        <p>从 P0/P1/P2 分级输出风险，帮助团队先处理真正影响上线的问题。</p>
+      </article>
+      <article class="card">
+        <h3>基线增量治理</h3>
+        <p>支持 baseline + only-new，允许历史债务逐步清理，不阻断当前交付节奏。</p>
+      </article>
+      <article class="card">
+        <h3>平台接入友好</h3>
+        <p>同时支持 text/json/markdown/sarif/html，便于接入 PR 检查与可视化平台。</p>
+      </article>
+    </section>
+
+    <h2 class="section-title">上线指标</h2>
+    <section class="kpis">
+      <div class="kpi"><div class="label">首次扫描时间</div><div class="value">&lt;5m</div></div>
+      <div class="kpi"><div class="label">CI接入时间</div><div class="value">&lt;15m</div></div>
+      <div class="kpi"><div class="label">报告格式</div><div class="value">5+</div></div>
+      <div class="kpi"><div class="label">输出目标</div><div class="value">SARIF</div></div>
+    </section>
+
+    <h2 class="section-title">30/60/90 路线图</h2>
+    <section class="roadmap">
+      <article class="card">
+        <span class="pill p30">30 DAYS</span>
+        <h3>多入口分发</h3>
+        <p>完成 GitHub Action、静态落地页、Quickstart 文档与示例仓库。</p>
+      </article>
+      <article class="card">
+        <span class="pill p60">60 DAYS</span>
+        <h3>规则与治理</h3>
+        <p>上线规则包、误报抑制策略、增量扫描参数与可追踪报表。</p>
+      </article>
+      <article class="card">
+        <span class="pill p90">90 DAYS</span>
+        <h3>团队级能力</h3>
+        <p>提供趋势看板和团队协作策略，形成“开源引流 + 团队版”路径。</p>
+      </article>
+    </section>
+
+    <footer>© 2026 Repo Sleep Doctor. Built for release confidence.</footer>
+  </div>
+</body>
+</html>
+

@@ -1,0 +1,5 @@
+<<<<<<< HEAD
+alpha
+=======
+beta
+>>>>>>> feature/branch

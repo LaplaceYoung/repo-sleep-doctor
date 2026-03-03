@@ -1,0 +1,21 @@
+{
+  "name": "repo-sleep-doctor",
+  "version": "0.2.0",
+  "description": "A zero-dependency CLI that scans repositories and reports release risks.",
+  "bin": {
+    "repo-sleep-doctor": "src/cli.js"
+  },
+  "scripts": {
+    "build": "node -e \"console.log('build step not required for runtime JS project')\"",
+    "lint": "node scripts/lint.js",
+    "scan": "node src/cli.js . --fail-on none",
+    "scan:sarif": "node src/cli.js . --format sarif --out reports/scan.sarif --fail-on none",
+    "scan:html": "node src/cli.js . --format html --out reports/scan.html --fail-on none",
+    "example": "node src/cli.js test/fixtures/bad-repo --format text --fail-on none",
+    "test": "node --test test/scanner.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

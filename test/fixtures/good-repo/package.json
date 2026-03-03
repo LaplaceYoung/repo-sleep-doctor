@@ -1,0 +1,9 @@
+{
+  "name": "good-repo",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node -e \"console.log('build ok')\"",
+    "test": "node --test",
+    "lint": "node -e \"console.log('lint ok')\""
+  }
+}
