@@ -23,6 +23,7 @@ Options:
   --out <file>                              Write report to file
   --config <file>                           Use custom config path
   --max-files <number>                      Limit scanned files
+  --changed-since <git-ref>                 Scan only files changed since git ref
   --fail-on <none|p0|p1|p2>                 Exit 1 if findings hit threshold (default: p0)
   --baseline <file>                         Compare against a previous JSON report
   --only-new                                Show only findings not present in baseline
@@ -53,6 +54,7 @@ function parseArgs(argv) {
     outFile: null,
     configPath: null,
     maxFiles: undefined,
+    changedSince: null,
     failOn: "p0",
     baselinePath: null,
     onlyNew: false,
@@ -97,6 +99,11 @@ function parseArgs(argv) {
       }
       if (token === "--max-files") {
         options.maxFiles = Number(requireOptionValue(args, index, token));
+        index += 1;
+        continue;
+      }
+      if (token === "--changed-since") {
+        options.changedSince = requireOptionValue(args, index, token);
         index += 1;
         continue;
       }
@@ -167,6 +174,7 @@ function main() {
     const currentReport = scanRepository(options.targetPath, {
       configPath: options.configPath,
       maxFiles: options.maxFiles,
+      changedSince: options.changedSince,
       useGitIgnore: options.useGitIgnore
     });
 

@@ -47,6 +47,9 @@ function formatText(report) {
   lines.push(`Target: ${report.rootPath}`);
   lines.push(`Scanned: ${report.scannedAt}`);
   lines.push(`Duration: ${formatDuration(report.durationMs)} | Files: ${report.fileCount}`);
+  if (report.config && report.config.changedSince) {
+    lines.push(`Changed since: ${report.config.changedSince}`);
+  }
   lines.push(
     `Findings: P0=${report.summary.p0} P1=${report.summary.p1} P2=${report.summary.p2} | Score=${report.score}/100`
   );
@@ -96,6 +99,9 @@ function formatMarkdown(report) {
   lines.push(`- Scanned: \`${report.scannedAt}\``);
   lines.push(`- Duration: \`${formatDuration(report.durationMs)}\``);
   lines.push(`- Files: \`${report.fileCount}\``);
+  if (report.config && report.config.changedSince) {
+    lines.push(`- Changed since: \`${report.config.changedSince}\``);
+  }
   lines.push(`- Score: \`${report.score}/100\``);
   lines.push(`- Findings: \`P0=${report.summary.p0} P1=${report.summary.p1} P2=${report.summary.p2}\``);
 
@@ -310,11 +316,16 @@ function formatHtml(report) {
   <div class="wrap">
     <section class="hero">
       <h1>Repo Sleep Doctor</h1>
-      <div class="meta">
-        <div><strong>Target:</strong> ${escapeHtml(report.rootPath)}</div>
-        <div><strong>Scanned:</strong> ${escapeHtml(report.scannedAt)}</div>
-        <div><strong>Duration:</strong> ${escapeHtml(formatDuration(report.durationMs))} | <strong>Files:</strong> ${report.fileCount}</div>
-      </div>
+        <div class="meta">
+          <div><strong>Target:</strong> ${escapeHtml(report.rootPath)}</div>
+          <div><strong>Scanned:</strong> ${escapeHtml(report.scannedAt)}</div>
+          <div><strong>Duration:</strong> ${escapeHtml(formatDuration(report.durationMs))} | <strong>Files:</strong> ${report.fileCount}</div>
+          ${
+            report.config && report.config.changedSince
+              ? `<div><strong>Changed since:</strong> ${escapeHtml(report.config.changedSince)}</div>`
+              : ""
+          }
+        </div>
       <div class="metrics">${summaryBlocks}</div>
       ${comparisonBlock}
     </section>

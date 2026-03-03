@@ -41,6 +41,9 @@ npm run scan:sarif
 
 # HTML visual report
 npm run scan:html
+
+# only scan files changed since main
+node src/cli.js . --changed-since main --fail-on p1
 ```
 
 ## CLI Usage
@@ -55,6 +58,7 @@ Options:
 - `--out <file>` write formatted output to file
 - `--config <file>` use a custom config file path
 - `--max-files <number>` cap total scanned files
+- `--changed-since <git-ref>` only scan files changed since the given git ref
 - `--fail-on <none|p0|p1|p2>` set process exit threshold, default `p0`
 - `--baseline <file>` compare current scan against previous JSON report
 - `--only-new` show only findings introduced after baseline

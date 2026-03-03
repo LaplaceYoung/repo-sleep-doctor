@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { execFileSync } = require("child_process");
 
 const { compareWithBaseline, createOnlyNewReport, loadBaseline } = require("../src/baseline");
 const { formatSarif, formatMarkdown, shouldFail } = require("../src/reporters");
@@ -122,4 +123,54 @@ test(".gitignore patterns are applied by default and bypassed when disabled", ()
   assert.equal(bypassIgnoredConflict, true);
   assert.equal(customIgnoredConflictDefault, false);
   assert.equal(customIgnoredConflictBypass, false);
+});
+
+test("changed-since scans only files introduced in newer commits", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-git-"));
+  fs.mkdirSync(path.join(dir, "src"), { recursive: true });
+  fs.mkdirSync(path.join(dir, "test"), { recursive: true });
+
+  fs.writeFileSync(
+    path.join(dir, "README.md"),
+    "# Demo\n\n## Installation\n\nUse npm.\n\n## Usage\n\nRun scanner.\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(dir, "package.json"),
+    JSON.stringify(
+      {
+        name: "demo",
+        version: "1.0.0",
+        scripts: {
+          build: "echo build",
+          test: "echo test",
+          lint: "echo lint"
+        }
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+  fs.writeFileSync(path.join(dir, "test", "index.test.js"), "console.log('test placeholder');\n", "utf8");
+  fs.writeFileSync(path.join(dir, "src", "old.js"), "console.log('legacy debug');\n", "utf8");
+
+  execFileSync("git", ["init", "-b", "main"], { cwd: dir });
+  execFileSync("git", ["config", "user.name", "test-user"], { cwd: dir });
+  execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: dir });
+  execFileSync("git", ["add", "."], { cwd: dir });
+  execFileSync("git", ["commit", "-m", "baseline"], { cwd: dir });
+
+  fs.writeFileSync(path.join(dir, "src", "new.js"), "debugger;\n", "utf8");
+  execFileSync("git", ["add", "."], { cwd: dir });
+  execFileSync("git", ["commit", "-m", "add new issue"], { cwd: dir });
+
+  const fullReport = scanRepository(dir, { maxFiles: 100 });
+  const changedReport = scanRepository(dir, { maxFiles: 100, changedSince: "HEAD~1" });
+
+  assert.equal(fullReport.findings.some((finding) => finding.file === "src/old.js"), true);
+  assert.equal(fullReport.findings.some((finding) => finding.file === "src/new.js"), true);
+  assert.equal(changedReport.findings.some((finding) => finding.file === "src/old.js"), false);
+  assert.equal(changedReport.findings.some((finding) => finding.file === "src/new.js"), true);
+  assert.equal(changedReport.config.changedSince, "HEAD~1");
 });

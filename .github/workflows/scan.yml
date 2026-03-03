@@ -1,0 +1,59 @@
+name: Repo Sleep Doctor
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run quality checks
+        run: |
+          npm run lint
+          npm test
+          npm run build
+
+      - name: Scan repository (PR diff)
+        if: github.event_name == 'pull_request'
+        run: |
+          node src/cli.js . --changed-since "${{ github.event.pull_request.base.sha }}" --format sarif --out reports/scan.sarif --fail-on p1
+          node src/cli.js . --changed-since "${{ github.event.pull_request.base.sha }}" --format text --fail-on p1
+
+      - name: Scan repository (full on main)
+        if: github.event_name != 'pull_request'
+        run: |
+          node src/cli.js . --format sarif --out reports/scan.sarif --fail-on p1
+          node src/cli.js . --format text --fail-on p1
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/scan.sarif
+
+      - name: Upload scan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-sleep-doctor-report
+          path: reports/scan.sarif
+

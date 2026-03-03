@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { spawnSync } = require("child_process");
 
 const { loadConfig } = require("./config");
 const { runChecks } = require("./checks");
@@ -111,13 +112,45 @@ function collectFiles(rootPath, config) {
   return { files, skipped, truncated };
 }
 
+function listChangedPaths(rootPath, changedSince) {
+  const ref = String(changedSince || "").trim();
+  if (!ref) {
+    return null;
+  }
+
+  const diffSpec = `${ref}...HEAD`;
+  const result = spawnSync("git", ["-C", rootPath, "diff", "--name-only", "--diff-filter=ACMR", diffSpec], {
+    encoding: "utf8"
+  });
+
+  if (result.status !== 0) {
+    const details = (result.stderr || result.stdout || "").trim() || "git diff failed";
+    throw new Error(`Unable to resolve changed files for --changed-since ${ref}: ${details}`);
+  }
+
+  return new Set(
+    (result.stdout || "")
+      .split(/\r?\n/)
+      .map((line) => toPosixPath(String(line || "").trim()))
+      .filter(Boolean)
+  );
+}
+
 function scanRepository(targetPath, cliOptions = {}) {
   const start = Date.now();
   const rootPath = path.resolve(targetPath || process.cwd());
   const config = loadConfig(rootPath, cliOptions);
+  const changedSince = cliOptions.changedSince ? String(cliOptions.changedSince).trim() : null;
 
-  const { files, skipped, truncated } = collectFiles(rootPath, config);
-  const findings = runChecks(rootPath, files, config).sort(compareFindings);
+  const { files: collectedFiles, skipped, truncated } = collectFiles(rootPath, config);
+  const changedPaths = changedSince ? listChangedPaths(rootPath, changedSince) : null;
+  const files = changedPaths
+    ? collectedFiles.filter((file) => changedPaths.has(toPosixPath(file.relPath)))
+    : collectedFiles;
+
+  const findings = runChecks(rootPath, files, config, {
+    skipGlobalChecks: Boolean(changedSince)
+  }).sort(compareFindings);
   const summary = summarizeFindings(findings);
   const score = calculateScore(summary);
 
@@ -128,13 +161,15 @@ function scanRepository(targetPath, cliOptions = {}) {
     scannedAt: new Date().toISOString(),
     durationMs: Date.now() - start,
     fileCount: files.length,
+    collectedFileCount: collectedFiles.length,
     truncated,
     skipped,
     summary,
     score,
     configPath: config.configPath,
     config: {
-      useGitIgnore: config.useGitIgnore
+      useGitIgnore: config.useGitIgnore,
+      changedSince
     },
     findings
   };

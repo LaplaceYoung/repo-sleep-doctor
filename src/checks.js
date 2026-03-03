@@ -133,7 +133,7 @@ function tryReadTextFile(absPath) {
   }
 }
 
-function runChecks(rootPath, files, config) {
+function runChecks(rootPath, files, config, scanOptions = {}) {
   const findings = [];
   const ruleCounts = new Map();
   const context = {
@@ -250,7 +250,7 @@ function runChecks(rootPath, files, config) {
     }
   }
 
-  if (!rootReadme) {
+  if (!scanOptions.skipGlobalChecks && !rootReadme) {
     pushFinding(findings, ruleCounts, context, {
       id: "missing-readme",
       severity: "p1",
@@ -260,7 +260,7 @@ function runChecks(rootPath, files, config) {
       message: "No root README file found.",
       suggestion: "Add a README with install and usage instructions."
     });
-  } else {
+  } else if (!scanOptions.skipGlobalChecks) {
     if (!/^#{1,3}\s*(installation|install)\b/im.test(rootReadme)) {
       pushFinding(findings, ruleCounts, context, {
         id: "readme-install",
@@ -285,7 +285,7 @@ function runChecks(rootPath, files, config) {
     }
   }
 
-  if (rootPackage) {
+  if (!scanOptions.skipGlobalChecks && rootPackage) {
     try {
       const parsed = JSON.parse(rootPackage);
       const scripts = parsed.scripts || {};
@@ -335,7 +335,7 @@ function runChecks(rootPath, files, config) {
     }
   }
 
-  if (!hasTests && codeFileCount > 0) {
+  if (!scanOptions.skipGlobalChecks && !hasTests && codeFileCount > 0) {
     pushFinding(findings, ruleCounts, context, {
       id: "missing-tests",
       severity: codeFileCount > 10 ? "p1" : "p2",
