@@ -1,6 +1,8 @@
 # GitHub Actions Integration
 
-Use Repo Sleep Doctor in pull requests and pushes with SARIF + JUnit outputs.
+Use Repo Sleep Doctor in pull requests and pushes with dual tracks:
+- `security` preset for SARIF (code scanning)
+- `release` preset for JUnit (CI dashboards)
 
 ## Example workflow
 
@@ -26,8 +28,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
-      - run: node src/cli.js . --format sarif --out reports/scan.sarif --fail-on p1
-      - run: node src/cli.js . --format junit --out reports/scan.junit.xml --fail-on p1
+      - run: node src/cli.js . --preset security --format sarif --out reports/scan-security.sarif --fail-on p0
+      - run: node src/cli.js . --preset release --format junit --out reports/scan-release.junit.xml --fail-on p0
 ```
 
 ## PR-diff scan mode
@@ -51,4 +53,3 @@ node src/cli.js . --preset release --fail-on p1
 ```bash
 node src/cli.js . --preset security --fail-on p0
 ```
-

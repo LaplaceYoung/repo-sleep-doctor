@@ -45,26 +45,28 @@ jobs:
       - name: Scan repository (PR diff)
         if: github.event_name == 'pull_request'
         run: |
-          node src/cli.js . --changed-since "${{ github.event.pull_request.base.sha }}" --format sarif --out reports/scan.sarif --fail-on p1
-          node src/cli.js . --changed-since "${{ github.event.pull_request.base.sha }}" --format junit --out reports/scan.junit.xml --fail-on p1
-          node src/cli.js . --changed-since "${{ github.event.pull_request.base.sha }}" --format text --fail-on p1
+          node src/cli.js . --changed-since "${{ github.event.pull_request.base.sha }}" --preset security --format sarif --out reports/scan-security.sarif --fail-on p0
+          node src/cli.js . --changed-since "${{ github.event.pull_request.base.sha }}" --preset security --format text --fail-on p0
+          node src/cli.js . --changed-since "${{ github.event.pull_request.base.sha }}" --preset release --format junit --out reports/scan-release.junit.xml --fail-on p0
+          node src/cli.js . --changed-since "${{ github.event.pull_request.base.sha }}" --preset release --format text --fail-on p0
 
       - name: Scan repository (full on main)
         if: github.event_name != 'pull_request'
         run: |
-          node src/cli.js . --format sarif --out reports/scan.sarif --fail-on p1
-          node src/cli.js . --format junit --out reports/scan.junit.xml --fail-on p1
-          node src/cli.js . --format text --fail-on p1
+          node src/cli.js . --preset security --format sarif --out reports/scan-security.sarif --fail-on p0
+          node src/cli.js . --preset security --format text --fail-on p0
+          node src/cli.js . --preset release --format junit --out reports/scan-release.junit.xml --fail-on p0
+          node src/cli.js . --preset release --format text --fail-on p0
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: reports/scan.sarif
+          sarif_file: reports/scan-security.sarif
 
       - name: Upload scan artifact
         uses: actions/upload-artifact@v4
         with:
           name: repo-sleep-doctor-report
           path: |
-            reports/scan.sarif
-            reports/scan.junit.xml
+            reports/scan-security.sarif
+            reports/scan-release.junit.xml
