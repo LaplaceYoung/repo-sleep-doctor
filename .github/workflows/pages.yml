@@ -66,8 +66,9 @@ jobs:
       - name: Deploy to GitHub Pages
         if: steps.setup_pages.conclusion == 'success'
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4
 
       - name: Pages deployment note
-        if: steps.setup_pages.outcome != 'success'
-        run: echo "::warning::GitHub Pages is not fully configured yet. Enable Pages source to GitHub Actions in repository settings."
+        if: steps.setup_pages.outcome != 'success' || steps.deployment.outcome != 'success'
+        run: echo "::warning::GitHub Pages deployment is not fully configured yet. Enable Pages source to GitHub Actions and ensure repository settings allow Pages publish."
