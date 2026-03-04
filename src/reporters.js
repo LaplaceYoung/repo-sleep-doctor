@@ -50,6 +50,29 @@ function formatComparisonText(report) {
   return lines;
 }
 
+function formatAnalysisSummary(analysis) {
+  if (!analysis || typeof analysis !== "object") {
+    return "";
+  }
+
+  const parts = [];
+  parts.push(`textCandidates=${analysis.textCandidates}`);
+  parts.push(`textRead=${analysis.textFilesRead}`);
+  parts.push(`lineScanSkipped=${analysis.lineScanSkippedFiles}`);
+  parts.push(`linesScanned=${analysis.linesScanned}`);
+
+  if (Number.isFinite(Number(analysis.cacheHits)) || Number.isFinite(Number(analysis.cacheMisses))) {
+    const hits = Number.isFinite(Number(analysis.cacheHits)) ? Number(analysis.cacheHits) : 0;
+    const misses = Number.isFinite(Number(analysis.cacheMisses)) ? Number(analysis.cacheMisses) : 0;
+    const hitRate = Number.isFinite(Number(analysis.cacheHitRate)) ? Number(analysis.cacheHitRate) : 0;
+    parts.push(`cacheHits=${hits}`);
+    parts.push(`cacheMisses=${misses}`);
+    parts.push(`cacheHitRate=${(hitRate * 100).toFixed(1)}%`);
+  }
+
+  return parts.join(" ");
+}
+
 function formatText(report) {
   const lines = [];
   lines.push(`Repo Sleep Doctor v${report.version}`);
@@ -66,9 +89,7 @@ function formatText(report) {
     `Findings: P0=${report.summary.p0} P1=${report.summary.p1} P2=${report.summary.p2} | Score=${report.score}/100`
   );
   if (report.analysis) {
-    lines.push(
-      `Analysis: textCandidates=${report.analysis.textCandidates} textRead=${report.analysis.textFilesRead} lineScanSkipped=${report.analysis.lineScanSkippedFiles} linesScanned=${report.analysis.linesScanned}`
-    );
+    lines.push(`Analysis: ${formatAnalysisSummary(report.analysis)}`);
   }
   if (Array.isArray(report.history)) {
     lines.push(`History points: ${report.history.length}`);
@@ -128,9 +149,7 @@ function formatMarkdown(report) {
   lines.push(`- Score: \`${report.score}/100\``);
   lines.push(`- Findings: \`P0=${report.summary.p0} P1=${report.summary.p1} P2=${report.summary.p2}\``);
   if (report.analysis) {
-    lines.push(
-      `- Analysis: \`textCandidates=${report.analysis.textCandidates} textRead=${report.analysis.textFilesRead} lineScanSkipped=${report.analysis.lineScanSkippedFiles} linesScanned=${report.analysis.linesScanned}\``
-    );
+    lines.push(`- Analysis: \`${formatAnalysisSummary(report.analysis)}\``);
   }
   if (Array.isArray(report.history)) {
     lines.push(`- History points: \`${report.history.length}\``);
@@ -329,11 +348,19 @@ function severityChipClass(severity) {
 }
 
 function formatHtml(report) {
+  const cacheHitRate =
+    report.analysis && Number.isFinite(Number(report.analysis.cacheHitRate))
+      ? Math.round(Number(report.analysis.cacheHitRate) * 100)
+      : null;
+  const cacheMetric = cacheHitRate === null
+    ? ""
+    : `<div class="metric"><div class="label">Cache Hit</div><div class="value">${cacheHitRate}%</div></div>`;
   const summaryBlocks = `
     <div class="metric"><div class="label">P0</div><div class="value">${report.summary.p0}</div></div>
     <div class="metric"><div class="label">P1</div><div class="value">${report.summary.p1}</div></div>
     <div class="metric"><div class="label">P2</div><div class="value">${report.summary.p2}</div></div>
     <div class="metric"><div class="label">Score</div><div class="value">${report.score}</div></div>
+    ${cacheMetric}
   `;
 
   const comparisonBlock = report.baseline
@@ -350,7 +377,7 @@ function formatHtml(report) {
 
   const analysisBlock = report.analysis
     ? `<div class="analysis">
-      <strong>Fast Path:</strong> textCandidates=${report.analysis.textCandidates}, textRead=${report.analysis.textFilesRead}, lineScanSkipped=${report.analysis.lineScanSkippedFiles}, linesScanned=${report.analysis.linesScanned}
+      <strong>Fast Path:</strong> ${escapeHtml(formatAnalysisSummary(report.analysis))}
     </div>`
     : "";
 
@@ -391,6 +418,15 @@ function formatHtml(report) {
     })
     .join("");
 
+  const latestHistory = trendEntries[trendEntries.length - 1] || {};
+  const previousHistory = trendEntries.length > 1 ? trendEntries[trendEntries.length - 2] : null;
+  const latestRuleCounts =
+    latestHistory && latestHistory.ruleCounts && typeof latestHistory.ruleCounts === "object" ? latestHistory.ruleCounts : {};
+  const previousRuleCounts =
+    previousHistory && previousHistory.ruleCounts && typeof previousHistory.ruleCounts === "object"
+      ? previousHistory.ruleCounts
+      : {};
+
   const total = Math.max(report.summary.total || report.findings.length, 1);
   const p0Pct = ((report.summary.p0 / total) * 100).toFixed(2);
   const p1Pct = ((report.summary.p1 / total) * 100).toFixed(2);
@@ -412,6 +448,30 @@ function formatHtml(report) {
     .sort((a, b) => b.count - a.count || a.file.localeCompare(b.file))
     .slice(0, 8);
   const topRuleMax = topRules.length > 0 ? topRules[0].count : 1;
+
+  const normalizedLatestRuleCounts =
+    Object.keys(latestRuleCounts).length > 0 ? latestRuleCounts : Object.fromEntries(byRule.entries());
+  const momentumRules = Array.from(new Set([...Object.keys(normalizedLatestRuleCounts), ...Object.keys(previousRuleCounts)]))
+    .map((ruleId) => {
+      const latest = Number(normalizedLatestRuleCounts[ruleId] || 0);
+      const previous = Number(previousRuleCounts[ruleId] || 0);
+      return {
+        ruleId,
+        latest,
+        delta: latest - previous
+      };
+    })
+    .sort((a, b) => b.latest - a.latest || Math.abs(b.delta) - Math.abs(a.delta) || a.ruleId.localeCompare(b.ruleId))
+    .slice(0, 8);
+  const momentumRows =
+    momentumRules.length === 0
+      ? `<tr><td colspan="3">No rule momentum data.</td></tr>`
+      : momentumRules
+          .map(
+            (item) =>
+              `<tr><td>${escapeHtml(item.ruleId)}</td><td>${item.latest}</td><td>${item.delta >= 0 ? "+" : ""}${item.delta}</td></tr>`
+          )
+          .join("");
 
   const ruleBars =
     topRules.length === 0
@@ -464,7 +524,7 @@ function formatHtml(report) {
     .hero { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(9, 33, 52, 0.08); }
     h1 { margin: 0 0 8px; color: var(--accent); font-size: 28px; }
     .meta { color: var(--muted); font-size: 13px; line-height: 1.6; }
-    .metrics { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 12px; margin-top: 14px; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 14px; }
     .metric { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: #fafdff; }
     .metric .label { font-size: 12px; color: var(--muted); text-transform: uppercase; }
     .metric .value { font-size: 24px; font-weight: 700; margin-top: 4px; color: var(--accent); }
@@ -503,8 +563,8 @@ function formatHtml(report) {
     .trend-line { fill: none; stroke: #145a7a; stroke-width: 2.5; }
     .trend-dot { fill: #145a7a; }
     .trend-axis { font-size: 11px; fill: #5f7589; }
-    .history-mini table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-    .history-mini th, .history-mini td { border-bottom: 1px solid #edf3f8; text-align: left; padding: 6px 4px; }
+    .history-mini table, .momentum table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .history-mini th, .history-mini td, .momentum th, .momentum td { border-bottom: 1px solid #edf3f8; text-align: left; padding: 6px 4px; }
     .sev { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 700; color: white; }
     .sev-p0 { background: var(--p0); } .sev-p1 { background: var(--p1); } .sev-p2 { background: var(--p2); }
     .suggestion { margin-top: 6px; color: #4e647a; }
@@ -581,6 +641,12 @@ function formatHtml(report) {
         <table>
           <thead><tr><th>Scanned At</th><th>Score</th><th>Preset</th><th>Summary</th></tr></thead>
           <tbody>${recentHistoryRows}</tbody>
+        </table>
+      </div>
+      <div class="momentum">
+        <table>
+          <thead><tr><th>Rule</th><th>Latest</th><th>Delta vs Prev</th></tr></thead>
+          <tbody>${momentumRows}</tbody>
         </table>
       </div>
     </section>

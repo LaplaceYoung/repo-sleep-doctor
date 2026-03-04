@@ -3,6 +3,18 @@ const path = require("path");
 
 const DEFAULT_HISTORY_LIMIT = 120;
 
+function buildCountMap(items, keyGetter) {
+  const map = {};
+  for (const item of items || []) {
+    const key = keyGetter(item);
+    if (!key) {
+      continue;
+    }
+    map[key] = (map[key] || 0) + 1;
+  }
+  return map;
+}
+
 function toHistoryEntry(report) {
   return {
     scannedAt: report.scannedAt,
@@ -11,7 +23,9 @@ function toHistoryEntry(report) {
     fileCount: report.fileCount,
     durationMs: report.durationMs,
     preset: report.config && report.config.preset ? report.config.preset : null,
-    changedSince: report.config && report.config.changedSince ? report.config.changedSince : null
+    changedSince: report.config && report.config.changedSince ? report.config.changedSince : null,
+    ruleCounts: buildCountMap(report.findings, (finding) => (finding && finding.id ? String(finding.id) : "")),
+    fileCounts: buildCountMap(report.findings, (finding) => (finding && finding.file ? String(finding.file) : ""))
   };
 }
 
@@ -81,4 +95,3 @@ module.exports = {
   appendHistory,
   trimHistory
 };
-

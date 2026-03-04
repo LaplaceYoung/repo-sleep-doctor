@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 
+const { createConfigSignature, fileSignature, loadScanCache, saveScanCache } = require("./cache");
 const { loadConfig } = require("./config");
 const { runChecks } = require("./checks");
 const { createIgnoreMatcher } = require("./ignore");
@@ -91,7 +92,8 @@ function collectFiles(rootPath, config) {
         absPath,
         relPath,
         ext: path.extname(entry.name),
-        sizeBytes: stats.size
+        sizeBytes: stats.size,
+        mtimeMs: stats.mtimeMs
       });
 
       if (files.length >= config.maxFiles) {
@@ -141,19 +143,96 @@ function scanRepository(targetPath, cliOptions = {}) {
   const rootPath = path.resolve(targetPath || process.cwd());
   const config = loadConfig(rootPath, cliOptions);
   const changedSince = cliOptions.changedSince ? String(cliOptions.changedSince).trim() : null;
+  const cacheFile = cliOptions.cacheFile ? String(cliOptions.cacheFile).trim() : null;
+  const configSignature = createConfigSignature(config);
 
   const { files: collectedFiles, skipped, truncated } = collectFiles(rootPath, config);
   const changedPaths = changedSince ? listChangedPaths(rootPath, changedSince) : null;
-  const files = changedPaths
+  const scopedFiles = changedPaths
     ? collectedFiles.filter((file) => changedPaths.has(toPosixPath(file.relPath)))
     : collectedFiles;
+  const resolvedCachePath = cacheFile ? path.resolve(cacheFile) : null;
+  const files = resolvedCachePath
+    ? scopedFiles.filter((file) => path.resolve(file.absPath) !== resolvedCachePath)
+    : scopedFiles;
+
+  let cacheLoadStatus = "disabled";
+  let cacheEntries = {};
+  if (cacheFile) {
+    const loadedCache = loadScanCache(cacheFile, configSignature);
+    cacheLoadStatus = loadedCache.status;
+    cacheEntries = loadedCache.entries;
+  }
+
+  const activeFileCache = new Map();
+  const fileSignatures = new Map();
+  const staleCacheEntries = {};
+  for (const file of files) {
+    const signature = fileSignature(file);
+    fileSignatures.set(file.relPath, signature);
+
+    const cachedEntry = cacheEntries[file.relPath];
+    if (cachedEntry && cachedEntry.signature === signature) {
+      activeFileCache.set(file.relPath, {
+        findings: cachedEntry.findings,
+        meta: cachedEntry.meta
+      });
+      staleCacheEntries[file.relPath] = cachedEntry;
+    }
+  }
 
   const checkResult = runChecks(rootPath, files, config, {
-    skipGlobalChecks: Boolean(changedSince)
+    skipGlobalChecks: Boolean(changedSince),
+    fileCache: cacheFile ? activeFileCache : null
   });
   const findings = (checkResult.findings || []).sort(compareFindings);
   const summary = summarizeFindings(findings);
   const score = calculateScore(summary);
+
+  const analysis = checkResult.analysis || null;
+  if (analysis && checkResult.cache) {
+    const hits = Number(checkResult.cache.hits || 0);
+    const misses = Number(checkResult.cache.misses || 0);
+    const total = hits + misses;
+    analysis.cacheHits = hits;
+    analysis.cacheMisses = misses;
+    analysis.cacheHitRate = total > 0 ? Number((hits / total).toFixed(3)) : 0;
+    analysis.cacheStatus = cacheLoadStatus;
+  }
+
+  if (cacheFile) {
+    const nextCacheEntries = changedSince ? { ...cacheEntries } : {};
+    for (const file of files) {
+      const relPath = file.relPath;
+      const signature = fileSignatures.get(relPath);
+      if (!signature) {
+        continue;
+      }
+      if (staleCacheEntries[relPath]) {
+        nextCacheEntries[relPath] = staleCacheEntries[relPath];
+        continue;
+      }
+      const nextResult = checkResult.fileResults && checkResult.fileResults[relPath];
+      if (!nextResult) {
+        continue;
+      }
+      nextCacheEntries[relPath] = {
+        signature,
+        findings: nextResult.findings || [],
+        meta: nextResult.meta || {}
+      };
+    }
+    try {
+      const cachePath = saveScanCache(cacheFile, configSignature, nextCacheEntries);
+      if (analysis) {
+        analysis.cacheFile = cachePath;
+      }
+    } catch (_error) {
+      if (analysis) {
+        analysis.cacheSaveError = true;
+      }
+    }
+  }
 
   return {
     tool: "repo-sleep-doctor",
@@ -171,9 +250,10 @@ function scanRepository(targetPath, cliOptions = {}) {
     config: {
       useGitIgnore: config.useGitIgnore,
       preset: config.preset || null,
-      changedSince
+      changedSince,
+      cacheFile: cacheFile ? path.resolve(cacheFile) : null
     },
-    analysis: checkResult.analysis || null,
+    analysis,
     findings
   };
 }

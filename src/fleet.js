@@ -1,0 +1,334 @@
+const path = require("path");
+
+const { loadHistory } = require("./history");
+
+const VALID_FLEET_FORMATS = new Set(["text", "json", "markdown", "md", "html"]);
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function safeNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return numeric;
+}
+
+function detectRepoName(historyPath) {
+  const resolved = path.resolve(historyPath);
+  const stem = path.basename(resolved, path.extname(resolved));
+  const parent = path.basename(path.dirname(resolved));
+  const grand = path.basename(path.dirname(path.dirname(resolved)));
+
+  if (stem === "history" && parent === "reports" && grand) {
+    return grand;
+  }
+  if (stem === "history" && parent) {
+    return parent;
+  }
+  return stem || resolved;
+}
+
+function summarizeRepo(historyPath, entries) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return {
+      repo: detectRepoName(historyPath),
+      historyPath: path.resolve(historyPath),
+      scans: 0,
+      latestScore: 0,
+      avgScore: 0,
+      scoreDelta: 0,
+      latestSummary: { p0: 0, p1: 0, p2: 0 },
+      latestRuleCounts: {},
+      latestScannedAt: null
+    };
+  }
+
+  const first = entries[0];
+  const latest = entries[entries.length - 1];
+  const scoreSeries = entries.map((entry) => safeNumber(entry.score, 0));
+  const sumScore = scoreSeries.reduce((sum, score) => sum + score, 0);
+  const avgScore = sumScore / scoreSeries.length;
+  const scoreDelta = scoreSeries[scoreSeries.length - 1] - scoreSeries[0];
+
+  return {
+    repo: detectRepoName(historyPath),
+    historyPath: path.resolve(historyPath),
+    scans: entries.length,
+    latestScore: scoreSeries[scoreSeries.length - 1],
+    avgScore: Number(avgScore.toFixed(2)),
+    scoreDelta: Number(scoreDelta.toFixed(2)),
+    latestSummary: latest && latest.summary ? latest.summary : { p0: 0, p1: 0, p2: 0 },
+    latestRuleCounts: latest && latest.ruleCounts ? latest.ruleCounts : {},
+    latestScannedAt: latest && latest.scannedAt ? latest.scannedAt : null
+  };
+}
+
+function buildFleetReport(historyPaths, options = {}) {
+  const repos = [];
+  const ruleTotals = new Map();
+  let totalScans = 0;
+
+  for (const historyPath of historyPaths || []) {
+    const loaded = loadHistory(historyPath);
+    const repoSummary = summarizeRepo(loaded.path, loaded.entries);
+    repos.push(repoSummary);
+    totalScans += repoSummary.scans;
+
+    for (const [ruleId, count] of Object.entries(repoSummary.latestRuleCounts || {})) {
+      ruleTotals.set(ruleId, (ruleTotals.get(ruleId) || 0) + safeNumber(count, 0));
+    }
+  }
+
+  repos.sort((a, b) => {
+    const aP0 = safeNumber(a.latestSummary && a.latestSummary.p0, 0);
+    const bP0 = safeNumber(b.latestSummary && b.latestSummary.p0, 0);
+    if (aP0 !== bP0) {
+      return bP0 - aP0;
+    }
+    if (a.latestScore !== b.latestScore) {
+      return a.latestScore - b.latestScore;
+    }
+    return a.repo.localeCompare(b.repo);
+  });
+
+  const scannedRepos = repos.filter((repo) => repo.scans > 0);
+  const avgLatestScore =
+    scannedRepos.length > 0
+      ? Number(
+          (scannedRepos.reduce((sum, repo) => sum + safeNumber(repo.latestScore, 0), 0) / scannedRepos.length).toFixed(2)
+        )
+      : 0;
+  const riskRepos = scannedRepos.filter(
+    (repo) => safeNumber(repo.latestSummary.p0, 0) > 0 || safeNumber(repo.latestSummary.p1, 0) > 0
+  ).length;
+
+  const topRules = Array.from(ruleTotals.entries())
+    .map(([ruleId, count]) => ({ ruleId, count }))
+    .sort((a, b) => b.count - a.count || a.ruleId.localeCompare(b.ruleId))
+    .slice(0, options.topRules || 10);
+
+  return {
+    tool: "repo-sleep-doctor",
+    generatedAt: new Date().toISOString(),
+    stats: {
+      repoCount: repos.length,
+      scannedRepoCount: scannedRepos.length,
+      totalScans,
+      avgLatestScore,
+      riskRepos
+    },
+    repos: repos.slice(0, options.topRepos || 20),
+    topRules
+  };
+}
+
+function formatFleetText(report) {
+  const lines = [];
+  lines.push("Repo Sleep Doctor Fleet Report");
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push(
+    `Repos=${report.stats.repoCount} scanned=${report.stats.scannedRepoCount} totalScans=${report.stats.totalScans} avgLatestScore=${report.stats.avgLatestScore} riskRepos=${report.stats.riskRepos}`
+  );
+  lines.push("");
+  lines.push("Top Rules:");
+  if (report.topRules.length === 0) {
+    lines.push("- none");
+  } else {
+    for (const rule of report.topRules) {
+      lines.push(`- ${rule.ruleId}: ${rule.count}`);
+    }
+  }
+  lines.push("");
+  lines.push("Repositories:");
+  for (const repo of report.repos) {
+    lines.push(
+      `- ${repo.repo}: score=${repo.latestScore}, avg=${repo.avgScore}, delta=${repo.scoreDelta >= 0 ? "+" : ""}${repo.scoreDelta}, scans=${repo.scans}, P0=${repo.latestSummary.p0 || 0}, P1=${repo.latestSummary.p1 || 0}, P2=${repo.latestSummary.p2 || 0}`
+    );
+  }
+  return lines.join("\n");
+}
+
+function formatFleetMarkdown(report) {
+  const lines = [];
+  lines.push("# Repo Sleep Doctor Fleet Report");
+  lines.push("");
+  lines.push(`- Generated: \`${report.generatedAt}\``);
+  lines.push(`- Repositories: \`${report.stats.repoCount}\``);
+  lines.push(`- Scanned Repositories: \`${report.stats.scannedRepoCount}\``);
+  lines.push(`- Total Scans: \`${report.stats.totalScans}\``);
+  lines.push(`- Average Latest Score: \`${report.stats.avgLatestScore}\``);
+  lines.push(`- Repos With P0/P1: \`${report.stats.riskRepos}\``);
+  lines.push("");
+
+  lines.push("## Top Rules");
+  lines.push("");
+  if (report.topRules.length === 0) {
+    lines.push("No rule usage data.");
+  } else {
+    lines.push("| Rule | Count |");
+    lines.push("| --- | ---: |");
+    for (const rule of report.topRules) {
+      lines.push(`| \`${rule.ruleId}\` | ${rule.count} |`);
+    }
+  }
+
+  lines.push("");
+  lines.push("## Repositories");
+  lines.push("");
+  lines.push("| Repo | Latest Score | Avg Score | Delta | Scans | P0 | P1 | P2 |");
+  lines.push("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+  for (const repo of report.repos) {
+    lines.push(
+      `| ${repo.repo} | ${repo.latestScore} | ${repo.avgScore} | ${repo.scoreDelta >= 0 ? "+" : ""}${repo.scoreDelta} | ${repo.scans} | ${
+        repo.latestSummary.p0 || 0
+      } | ${repo.latestSummary.p1 || 0} | ${repo.latestSummary.p2 || 0} |`
+    );
+  }
+  return lines.join("\n");
+}
+
+function formatFleetHtml(report) {
+  const topRuleMax = report.topRules.length > 0 ? report.topRules[0].count : 1;
+  const ruleRows =
+    report.topRules.length === 0
+      ? `<div class="empty">No rule usage data.</div>`
+      : report.topRules
+          .map(
+            (rule) => `<div class="bar-row"><div class="bar-label">${escapeHtml(rule.ruleId)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(
+              8,
+              Math.round((rule.count / topRuleMax) * 100)
+            )}%"></div></div><div class="bar-value">${rule.count}</div></div>`
+          )
+          .join("");
+
+  const repoRows =
+    report.repos.length === 0
+      ? `<tr><td colspan="8">No repository history data.</td></tr>`
+      : report.repos
+          .map(
+            (repo) => `<tr>
+        <td>${escapeHtml(repo.repo)}</td>
+        <td>${repo.latestScore}</td>
+        <td>${repo.avgScore}</td>
+        <td>${repo.scoreDelta >= 0 ? "+" : ""}${repo.scoreDelta}</td>
+        <td>${repo.scans}</td>
+        <td>${repo.latestSummary.p0 || 0}</td>
+        <td>${repo.latestSummary.p1 || 0}</td>
+        <td>${repo.latestSummary.p2 || 0}</td>
+      </tr>`
+          )
+          .join("");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Repo Sleep Doctor Fleet Report</title>
+  <style>
+    :root { --bg: #f2f7fb; --card: #fff; --line: #d6e1ea; --ink: #123; --muted: #617387; --accent: #145a7a; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: radial-gradient(circle at 0 0, #d8eefb, transparent 45%), var(--bg); color: var(--ink); }
+    .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px 24px; }
+    .hero, .panel, .table-wrap { background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+    .hero { padding: 18px; }
+    h1 { margin: 0 0 8px; color: var(--accent); }
+    .meta { color: var(--muted); font-size: 13px; }
+    .metrics { margin-top: 12px; display: grid; grid-template-columns: repeat(5, minmax(100px, 1fr)); gap: 10px; }
+    .metric { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: #fafdff; }
+    .metric .k { font-size: 12px; color: var(--muted); text-transform: uppercase; }
+    .metric .v { font-size: 22px; font-weight: 700; margin-top: 3px; color: var(--accent); }
+    .grid { margin-top: 14px; display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .panel { padding: 12px; }
+    .panel h2 { margin: 0 0 8px; font-size: 16px; color: #24455f; }
+    .bar-row { display: grid; grid-template-columns: 160px 1fr 50px; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .bar-label { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar-track { background: #edf3f8; border-radius: 999px; height: 10px; overflow: hidden; }
+    .bar-fill { background: linear-gradient(90deg, #4f84c9, #145a7a); height: 100%; }
+    .bar-value { text-align: right; font-size: 12px; color: #456; }
+    .table-wrap { margin-top: 12px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; font-size: 13px; padding: 10px 12px; border-bottom: 1px solid #ebf1f6; }
+    th { background: #f7fbff; color: #355; }
+    tr:last-child td { border-bottom: 0; }
+    .empty { color: #617387; font-size: 13px; }
+    @media (max-width: 760px) {
+      .metrics { grid-template-columns: repeat(2, minmax(100px, 1fr)); }
+      th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4) { display: none; }
+      .bar-row { grid-template-columns: 120px 1fr 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Repo Sleep Doctor Fleet Report</h1>
+      <div class="meta">Generated: ${report.generatedAt}</div>
+      <div class="metrics">
+        <div class="metric"><div class="k">Repos</div><div class="v">${report.stats.repoCount}</div></div>
+        <div class="metric"><div class="k">Scanned</div><div class="v">${report.stats.scannedRepoCount}</div></div>
+        <div class="metric"><div class="k">Total Scans</div><div class="v">${report.stats.totalScans}</div></div>
+        <div class="metric"><div class="k">Avg Latest</div><div class="v">${report.stats.avgLatestScore}</div></div>
+        <div class="metric"><div class="k">Risk Repos</div><div class="v">${report.stats.riskRepos}</div></div>
+      </div>
+    </section>
+    <section class="grid">
+      <article class="panel">
+        <h2>Top Rules (latest snapshots)</h2>
+        ${ruleRows}
+      </article>
+    </section>
+    <section class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Repo</th>
+            <th>Latest Score</th>
+            <th>Avg Score</th>
+            <th>Delta</th>
+            <th>Scans</th>
+            <th>P0</th>
+            <th>P1</th>
+            <th>P2</th>
+          </tr>
+        </thead>
+        <tbody>${repoRows}</tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>`;
+}
+
+function formatFleetReport(report, format = "text") {
+  const normalized = String(format || "text").toLowerCase();
+  if (!VALID_FLEET_FORMATS.has(normalized)) {
+    throw new Error(`Invalid fleet format: ${format}`);
+  }
+  if (normalized === "json") {
+    return JSON.stringify(report, null, 2);
+  }
+  if (normalized === "markdown" || normalized === "md") {
+    return formatFleetMarkdown(report);
+  }
+  if (normalized === "html") {
+    return formatFleetHtml(report);
+  }
+  return formatFleetText(report);
+}
+
+module.exports = {
+  VALID_FLEET_FORMATS,
+  buildFleetReport,
+  formatFleetReport,
+  formatFleetText,
+  formatFleetMarkdown,
+  formatFleetHtml
+};

@@ -6,12 +6,42 @@ const path = require("path");
 const { execFileSync, spawnSync } = require("child_process");
 
 const { compareWithBaseline, createOnlyNewReport, loadBaseline } = require("../src/baseline");
+const { buildFleetReport, formatFleetReport } = require("../src/fleet");
 const { formatSarif, formatMarkdown, formatJunit, formatHtml, shouldFail } = require("../src/reporters");
 const { scanRepository } = require("../src/scanner");
 
 const badRepo = path.join(__dirname, "fixtures", "bad-repo");
 const goodRepo = path.join(__dirname, "fixtures", "good-repo");
 const ignoreRepo = path.join(__dirname, "fixtures", "ignore-repo");
+
+function writeCacheFixtureRepo(rootDir) {
+  fs.mkdirSync(path.join(rootDir, "src"), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, "test"), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, "README.md"),
+    "# Demo\n\n## Installation\n\nnpm install\n\n## Usage\n\nnpm run scan\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(rootDir, "package.json"),
+    JSON.stringify(
+      {
+        name: "cache-demo",
+        version: "1.0.0",
+        scripts: {
+          build: "echo build",
+          test: "echo test",
+          lint: "echo lint"
+        }
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+  fs.writeFileSync(path.join(rootDir, "src", "app.js"), "const answer = 42;\n", "utf8");
+  fs.writeFileSync(path.join(rootDir, "test", "app.test.js"), "module.exports = {};\n", "utf8");
+}
 
 test("scanRepository finds high-severity issues in bad fixture", () => {
   const report = scanRepository(badRepo, {
@@ -39,6 +69,37 @@ test("scanRepository exposes analysis stats for performance visibility", () => {
   assert.equal(typeof report.analysis.lineScanSkippedFiles, "number");
   assert.equal(typeof report.analysis.linesScanned, "number");
   assert.ok(report.analysis.textCandidates >= report.analysis.textFilesRead);
+});
+
+test("scanRepository reuses cache file across unchanged runs", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-cache-"));
+  writeCacheFixtureRepo(dir);
+  const cachePath = path.join(dir, ".cache", "scan-cache.json");
+
+  const first = scanRepository(dir, { maxFiles: 100, cacheFile: cachePath });
+  const second = scanRepository(dir, { maxFiles: 100, cacheFile: cachePath });
+
+  assert.equal(first.analysis.cacheHits, 0);
+  assert.ok(first.analysis.cacheMisses >= first.fileCount);
+  assert.ok(second.analysis.cacheHits >= second.fileCount);
+  assert.equal(second.analysis.cacheMisses, 0);
+  assert.deepEqual(second.summary, first.summary);
+});
+
+test("scanRepository rescans changed files when cache signature changes", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-cache-change-"));
+  writeCacheFixtureRepo(dir);
+  const cachePath = path.join(dir, ".cache", "scan-cache.json");
+
+  const first = scanRepository(dir, { maxFiles: 100, cacheFile: cachePath });
+  assert.equal(first.findings.length, 0);
+
+  fs.appendFileSync(path.join(dir, "src", "app.js"), "debugger;\n", "utf8");
+  const second = scanRepository(dir, { maxFiles: 100, cacheFile: cachePath });
+
+  assert.ok(second.analysis.cacheMisses >= 1);
+  assert.ok(second.analysis.cacheHits >= 1);
+  assert.equal(second.findings.some((finding) => finding.id === "debugger"), true);
 });
 
 test("shouldFail honors severity threshold", () => {
@@ -144,13 +205,15 @@ test("formatHtml contains dashboard panels and filter controls", () => {
       scannedAt: "2026-03-04T00:00:00.000Z",
       score: 92,
       summary: { p0: 0, p1: 1, p2: 0 },
-      preset: "all"
+      preset: "all",
+      ruleCounts: { "console-call": 1 }
     },
     {
       scannedAt: "2026-03-04T00:10:00.000Z",
       score: 88,
       summary: { p0: 0, p1: 2, p2: 0 },
-      preset: "release"
+      preset: "release",
+      ruleCounts: { "console-call": 2, "missing-test-script": 1 }
     }
   ];
   const html = formatHtml(report);
@@ -158,6 +221,7 @@ test("formatHtml contains dashboard panels and filter controls", () => {
   assert.match(html, /Hotspot Files/);
   assert.match(html, /Score Trend/);
   assert.match(html, /Scanned At/);
+  assert.match(html, /Delta vs Prev/);
   assert.match(html, /data-filter="p0"/);
   assert.match(html, /finding-search/);
 });
@@ -332,4 +396,98 @@ test("cli can persist scan history to json file", () => {
   assert.equal(payload.entries.length, 2);
   assert.equal(typeof payload.entries[0].score, "number");
   assert.equal(payload.entries[1].preset, "release");
+  assert.equal(typeof payload.entries[1].ruleCounts, "object");
+});
+
+test("cli cache-file option reuses cached file analysis", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-cli-cache-"));
+  const cachePath = path.join(dir, ".cache", "scan-cache.json");
+  writeCacheFixtureRepo(dir);
+
+  const run1 = spawnSync(
+    process.execPath,
+    [cliPath, dir, "--cache-file", cachePath, "--format", "json", "--fail-on", "none"],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+  const run2 = spawnSync(
+    process.execPath,
+    [cliPath, dir, "--cache-file", cachePath, "--format", "json", "--fail-on", "none"],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+
+  assert.equal(run1.status, 0);
+  assert.equal(run2.status, 0);
+  const report2 = JSON.parse(run2.stdout);
+  assert.ok(report2.analysis.cacheHits >= report2.fileCount);
+  assert.equal(report2.analysis.cacheMisses, 0);
+});
+
+test("fleet report aggregates multiple history sources", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-"));
+  const repoAPath = path.join(dir, "repo-a.history.json");
+  const repoBPath = path.join(dir, "repo-b.history.json");
+
+  fs.writeFileSync(
+    repoAPath,
+    JSON.stringify(
+      {
+        entries: [
+          { scannedAt: "2026-03-01T00:00:00.000Z", score: 90, summary: { p0: 0, p1: 1, p2: 1 }, ruleCounts: { "console-call": 1 } },
+          { scannedAt: "2026-03-02T00:00:00.000Z", score: 86, summary: { p0: 1, p1: 1, p2: 0 }, ruleCounts: { "merge-marker": 1, "console-call": 1 } }
+        ]
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+  fs.writeFileSync(
+    repoBPath,
+    JSON.stringify(
+      {
+        entries: [
+          { scannedAt: "2026-03-01T00:00:00.000Z", score: 98, summary: { p0: 0, p1: 0, p2: 1 }, ruleCounts: { "todo-comment": 1 } }
+        ]
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+
+  const report = buildFleetReport([repoAPath, repoBPath], { topRepos: 10, topRules: 10 });
+  assert.equal(report.stats.repoCount, 2);
+  assert.equal(report.stats.totalScans, 3);
+  assert.equal(report.topRules.length > 0, true);
+  const json = formatFleetReport(report, "json");
+  const parsed = JSON.parse(json);
+  assert.equal(parsed.repos.length, 2);
+});
+
+test("cli fleet command outputs json report", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-cli-"));
+  const historyPath = path.join(dir, "history.json");
+  fs.writeFileSync(
+    historyPath,
+    JSON.stringify(
+      {
+        entries: [{ scannedAt: "2026-03-01T00:00:00.000Z", score: 95, summary: { p0: 0, p1: 0, p2: 1 }, ruleCounts: { "todo-comment": 1 } }]
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, "fleet", historyPath, "--format", "json"], {
+    encoding: "utf8",
+    cwd: path.join(__dirname, "..")
+  });
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.stats.repoCount, 1);
+  assert.equal(Array.isArray(parsed.repos), true);
 });

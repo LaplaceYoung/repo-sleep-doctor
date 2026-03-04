@@ -149,6 +149,29 @@ function hasAnyNeedle(haystack, needles) {
   return false;
 }
 
+function createFileMeta() {
+  return {
+    isTestFile: false,
+    isCodeFile: false,
+    readmeContent: null,
+    packageContent: null,
+    analysis: {
+      textCandidates: 0,
+      textFilesRead: 0,
+      lineScanSkippedFiles: 0,
+      linesScanned: 0
+    }
+  };
+}
+
+function toSafeNumber(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return 0;
+  }
+  return parsed;
+}
+
 function runChecks(rootPath, files, config, scanOptions = {}) {
   const findings = [];
   const ruleCounts = new Map();
@@ -185,10 +208,75 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
     lineScanSkippedFiles: 0,
     linesScanned: 0
   };
+  const fileCache = scanOptions.fileCache instanceof Map ? scanOptions.fileCache : null;
+  const captureFileResults = Boolean(fileCache) || Boolean(scanOptions.captureFileResults);
+  const fileResults = captureFileResults ? {} : null;
+  let cacheHits = 0;
+  let cacheMisses = 0;
+
+  function captureFileResult(file, findingStartIndex, meta) {
+    if (!captureFileResults || !fileResults) {
+      return;
+    }
+    fileResults[file.relPath] = {
+      findings: findings
+        .slice(findingStartIndex)
+        .filter((finding) => finding.file === file.relPath)
+        .map((finding) => ({ ...finding })),
+      meta: {
+        ...meta,
+        analysis: {
+          textCandidates: toSafeNumber(meta.analysis && meta.analysis.textCandidates),
+          textFilesRead: toSafeNumber(meta.analysis && meta.analysis.textFilesRead),
+          lineScanSkippedFiles: toSafeNumber(meta.analysis && meta.analysis.lineScanSkippedFiles),
+          linesScanned: toSafeNumber(meta.analysis && meta.analysis.linesScanned)
+        }
+      }
+    };
+  }
 
   for (const file of files) {
+    const cached = fileCache ? fileCache.get(file.relPath) : null;
+    if (cached && typeof cached === "object" && Array.isArray(cached.findings)) {
+      cacheHits += 1;
+      const cachedMeta = cached.meta && typeof cached.meta === "object" ? cached.meta : {};
+      const cachedAnalysis =
+        cachedMeta.analysis && typeof cachedMeta.analysis === "object" ? cachedMeta.analysis : {};
+
+      if (cachedMeta.isTestFile) {
+        hasTests = true;
+      }
+      if (cachedMeta.isCodeFile) {
+        codeFileCount += 1;
+      }
+      if (typeof cachedMeta.readmeContent === "string") {
+        rootReadme = cachedMeta.readmeContent;
+      }
+      if (typeof cachedMeta.packageContent === "string") {
+        rootPackage = cachedMeta.packageContent;
+      }
+
+      analysis.textCandidates += toSafeNumber(cachedAnalysis.textCandidates);
+      analysis.textFilesRead += toSafeNumber(cachedAnalysis.textFilesRead);
+      analysis.lineScanSkippedFiles += toSafeNumber(cachedAnalysis.lineScanSkippedFiles);
+      analysis.linesScanned += toSafeNumber(cachedAnalysis.linesScanned);
+
+      for (const finding of cached.findings) {
+        pushFinding(findings, ruleCounts, context, finding);
+      }
+      continue;
+    }
+
+    if (fileCache) {
+      cacheMisses += 1;
+    }
+
+    const fileFindingStart = findings.length;
+    const fileMeta = createFileMeta();
+
     if (isTestFile(file.relPath)) {
       hasTests = true;
+      fileMeta.isTestFile = true;
     }
 
     if (largeFileEnabled && file.sizeBytes > largeFileLimit) {
@@ -207,24 +295,31 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
     const isCodeFile = CODE_EXTENSIONS.has(ext);
     if (isCodeFile) {
       codeFileCount += 1;
+      fileMeta.isCodeFile = true;
     }
 
     if (!isTextCandidate(file, textExtensions) || file.sizeBytes > maxTextBytes) {
+      captureFileResult(file, fileFindingStart, fileMeta);
       continue;
     }
     analysis.textCandidates += 1;
+    fileMeta.analysis.textCandidates += 1;
 
     const content = tryReadTextFile(file.absPath);
     if (content === null) {
+      captureFileResult(file, fileFindingStart, fileMeta);
       continue;
     }
     analysis.textFilesRead += 1;
+    fileMeta.analysis.textFilesRead += 1;
 
     if (file.relPath.toLowerCase() === "readme.md") {
       rootReadme = content;
+      fileMeta.readmeContent = content;
     }
     if (file.relPath === "package.json") {
       rootPackage = content;
+      fileMeta.packageContent = content;
     }
 
     const upperContent = content.toUpperCase();
@@ -236,11 +331,14 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
     const needsLineScan = hasMergeHints || hasSecretHints || hasDebugHints || hasTodoHints;
     if (!needsLineScan) {
       analysis.lineScanSkippedFiles += 1;
+      fileMeta.analysis.lineScanSkippedFiles += 1;
+      captureFileResult(file, fileFindingStart, fileMeta);
       continue;
     }
 
     const lines = content.split(/\r?\n/);
     analysis.linesScanned += lines.length;
+    fileMeta.analysis.linesScanned += lines.length;
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index];
       const lineNumber = index + 1;
@@ -302,6 +400,8 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
         });
       }
     }
+
+    captureFileResult(file, fileFindingStart, fileMeta);
   }
 
   if (!scanOptions.skipGlobalChecks && missingReadmeEnabled && !rootReadme) {
@@ -405,7 +505,14 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
 
   return {
     findings,
-    analysis
+    analysis,
+    fileResults: fileResults || {},
+    cache: fileCache
+      ? {
+          hits: cacheHits,
+          misses: cacheMisses
+        }
+      : null
   };
 }
 

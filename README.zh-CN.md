@@ -1,29 +1,36 @@
-# Repo Sleep Doctor
+﻿# Repo Sleep Doctor
 
 Language: [English](README.md) | 简体中文
 
-`repo-sleep-doctor` 是一个零依赖 Node CLI，用于扫描仓库发布风险并输出 `P0/P1/P2` 分级报告。
+`repo-sleep-doctor` 是一个零依赖 Node CLI，用于扫描仓库并输出 `P0/P1/P2` 分级的发布风险报告。
 
-## 能做什么
+灵感来源：
+- GitHub [`ianlewis/todos`](https://github.com/ianlewis/todos)（可执行 TODO 提取）
+- GitHub [`DavidAnson/markdownlint`](https://github.com/DavidAnson/markdownlint)（规则驱动质量检查）
+- CI 场景常见的仓库健康检查模式
 
-可检测常见发布阻断项：
+## 能力概览
 
+扫描器可识别常见发布阻断项：
 - 未解决的 merge 冲突标记
 - 可能的硬编码密钥
-- 调试语句残留
-- 代码中的 TODO/FIXME/HACK 标记
+- 代码中的调试语句
+- 代码中的 TODO/FIXME/HACK 注释
 - README 缺少安装/使用章节
 - `package.json` 缺少 `build/test/lint` 脚本
 - 缺少测试文件
 - 超大文件
-- 交互式 HTML 仪表盘（严重级别/规则分布/热点文件）
-- 快速路径启发式扫描（低信号文件跳过逐行解析，加速运行）
+- HTML 可视化仪表盘（严重级别、规则分布、热点文件、分数趋势）
+- Fleet 聚合仪表盘（跨仓库历史汇总）
+- 可选文件级缓存（重复扫描提速）
 
 ## 安装
 
 ```bash
 npm install
 ```
+
+无需额外运行时依赖。
 
 ## 快速开始
 
@@ -37,11 +44,11 @@ node src/cli.js . --format markdown --out reports/scan.md --fail-on none
 # SARIF 报告（代码扫描平台）
 npm run scan:sarif
 
-# JUnit XML 报告（CI 测试面板）
-npm run scan:junit
-
 # HTML 可视化报告
 npm run scan:html
+
+# JUnit XML 报告（CI 测试看板）
+npm run scan:junit
 
 # 仅扫描相对 main 的变更文件
 node src/cli.js . --changed-since main --fail-on p1
@@ -49,32 +56,47 @@ node src/cli.js . --changed-since main --fail-on p1
 # 使用内置规则预设（发布导向）
 node src/cli.js . --preset release --fail-on p1
 
-# 持久化趋势历史并输出带趋势图的 HTML 报告
+# 持久化趋势历史并输出 HTML 仪表盘
 node src/cli.js . --history-file reports/history.json --history-limit 120 --format html --out reports/scan.html --fail-on none
+
+# 开启文件级缓存，提升重复扫描速度
+node src/cli.js . --cache-file reports/scan.cache.json --format text --fail-on none
+
+# 聚合多个仓库历史，输出 fleet 看板
+node src/cli.js fleet reports/repo-a.history.json reports/repo-b.history.json --format html --out reports/fleet.html
 ```
 
-## CLI 参数
+## CLI 用法
 
+```bash
+node src/cli.js [path] [options]
+node src/cli.js scan [path] [options]
+node src/cli.js fleet <history-file...> [options]
+```
+
+扫描参数：
 - `--format <text|json|markdown|sarif|html|junit>` 输出格式，默认 `text`
 - `--out <file>` 写入输出文件
-- `--config <file>` 指定配置文件路径
+- `--config <file>` 指定自定义配置文件路径
 - `--preset <all|release|security>` 使用内置规则预设
-- `--max-files <number>` 限制扫描文件数
+- `--cache-file <file>` 启用文件级缓存加速扫描
+- `--no-cache` 即使提供缓存文件也禁用缓存复用
+- `--max-files <number>` 限制扫描文件总数
 - `--changed-since <git-ref>` 仅扫描相对指定 git 引用的变更文件
 - `--fail-on <none|p0|p1|p2>` 设置退出阈值，默认 `p0`
-- `--baseline <file>` 与历史基线报告对比
-- `--only-new` 仅输出相对基线的新问题
+- `--baseline <file>` 与历史基线 JSON 报告对比
+- `--only-new` 仅输出相对基线新增的问题
 - `--save-baseline <file>` 保存当前扫描作为基线
-- `--history-file <file>` 追加扫描摘要到历史 JSON 文件
-- `--history-limit <number>` 仅保留最近 N 条历史记录（默认 120）
-- `--no-gitignore` 不使用 `.gitignore` 规则
-- `--list-presets` 输出内置预设及启用规则
+- `--history-file <file>` 追加扫描摘要到历史 JSON
+- `--history-limit <number>` 仅保留最近 N 条历史（默认 120）
+- `--no-gitignore` 禁用 `.gitignore` 匹配
+- `--list-presets` 输出所有内置预设及启用规则
 
-## 预设说明
-
-- `all`：启用全部内置规则（默认行为）
-- `release`：聚焦发布准备与代码质量，关闭纯安全密钥类规则
-- `security`：聚焦密钥泄露与冲突风险，关闭发布准备类规则
+Fleet 参数：
+- `--format <text|json|markdown|html>` 输出格式，默认 `text`
+- `--out <file>` 写入 fleet 报告文件
+- `--top-repos <number>` 输出中展示的仓库数量上限（默认 20）
+- `--top-rules <number>` 输出中展示的规则数量上限（默认 10）
 
 ## 基线工作流
 
@@ -86,13 +108,57 @@ node src/cli.js . --format json --save-baseline reports/baseline.json --fail-on 
 node src/cli.js . --baseline reports/baseline.json --only-new --format text --fail-on p1
 ```
 
-## 规则列表
+## 历史 + Fleet 工作流
 
-详见 [docs/rules.md](docs/rules.md)。
+```bash
+# 单仓库写入历史（在每个仓库执行）
+node src/cli.js . --history-file reports/history.json --history-limit 200 --format text --fail-on none
 
-## 集成指南
+# 聚合多个仓库历史（可在任意位置执行）
+node src/cli.js fleet repo-a/reports/history.json repo-b/reports/history.json --format markdown --out reports/fleet.md
+```
 
-- GitHub Actions 接入：[`docs/guides/github-action.md`](docs/guides/github-action.md)
+## 配置
+
+在仓库根目录创建 `.repo-sleep-doctor.json`：
+
+```json
+{
+  "ignoreDirs": [".git", "node_modules", "dist"],
+  "ignorePatterns": ["**/*.min.js", "**/*.map"],
+  "useGitIgnore": true,
+  "preset": "release",
+  "additionalIgnoreFiles": [".repo-sleep-doctorignore"],
+  "textExtensions": [".js", ".ts", ".tsx", ".md"],
+  "maxFileSizeMb": 1,
+  "maxTextFileSizeKb": 256,
+  "maxFiles": 6000,
+  "maxFindingsPerRule": 80,
+  "disabledRules": ["todo-comment"],
+  "severityOverrides": {
+    "console-call": "p2"
+  }
+}
+```
+
+预设说明：
+- `all`：启用全部内置规则（默认）
+- `release`：聚焦发布准备度与代码质量
+- `security`：聚焦密钥/安全风险
+
+规则清单见 [`docs/rules.md`](docs/rules.md)。
+
+集成指南：
+- GitHub Actions：[`docs/guides/github-action.md`](docs/guides/github-action.md)
+
+## 评分规则
+
+初始分为 `100`，按严重级别扣分：
+- 每个 `P0`：`-25`
+- 每个 `P1`：`-8`
+- 每个 `P2`：`-2`
+
+最低为 `0` 分。
 
 ## 开发
 

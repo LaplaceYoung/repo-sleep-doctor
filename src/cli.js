@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { compareWithBaseline, createOnlyNewReport, loadBaseline } = require("./baseline");
+const { VALID_FLEET_FORMATS, buildFleetReport, formatFleetReport } = require("./fleet");
 const { DEFAULT_HISTORY_LIMIT, appendHistory, toHistoryEntry, trimHistory } = require("./history");
 const { PRESET_RULES } = require("./rule-catalog");
 const { scanRepository } = require("./scanner");
@@ -19,12 +20,15 @@ Repo Sleep Doctor - repository release risk scanner
 Usage:
   node src/cli.js [path] [options]
   node src/cli.js scan [path] [options]
+  node src/cli.js fleet <history-file...> [options]
 
-Options:
+Scan options:
   --format <text|json|markdown|sarif|html|junit>  Output format (default: text)
   --out <file>                              Write report to file
   --config <file>                           Use custom config path
   --preset <all|release|security>          Use built-in rule preset
+  --cache-file <file>                       Reuse file-level scan cache across runs
+  --no-cache                                Disable cache reuse even if cache file is set
   --max-files <number>                      Limit scanned files
   --changed-since <git-ref>                 Scan only files changed since git ref
   --fail-on <none|p0|p1|p2>                 Exit 1 if findings hit threshold (default: p0)
@@ -36,6 +40,12 @@ Options:
   --no-gitignore                            Ignore .gitignore and scan all matched files
   --list-presets                            Print built-in presets and their enabled rules
   --help                                    Show help
+
+Fleet options:
+  --format <text|json|markdown|html>        Fleet report format (default: text)
+  --out <file>                              Write fleet report to file
+  --top-repos <number>                      Limit repos shown in fleet report (default: 20)
+  --top-rules <number>                      Limit top rules shown in fleet report (default: 10)
 `;
   process.stdout.write(message.trimStart());
 }
@@ -57,7 +67,7 @@ function requireOptionValue(args, index, optionName) {
   return value;
 }
 
-function parseArgs(argv) {
+function parseScanArgs(argv) {
   const args = [...argv];
   if (args[0] === "scan") {
     args.shift();
@@ -69,6 +79,8 @@ function parseArgs(argv) {
     outFile: null,
     configPath: null,
     preset: undefined,
+    cacheFile: null,
+    useCache: true,
     maxFiles: undefined,
     changedSince: null,
     failOn: "p0",
@@ -99,6 +111,10 @@ function parseArgs(argv) {
       options.useGitIgnore = false;
       continue;
     }
+    if (token === "--no-cache") {
+      options.useCache = false;
+      continue;
+    }
     if (token === "--list-presets") {
       options.listPresets = true;
       continue;
@@ -122,6 +138,11 @@ function parseArgs(argv) {
       }
       if (token === "--preset") {
         options.preset = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--cache-file") {
+        options.cacheFile = requireOptionValue(args, index, token);
         index += 1;
         continue;
       }
@@ -190,6 +211,71 @@ function parseArgs(argv) {
   return options;
 }
 
+function parseFleetArgs(argv) {
+  const args = [...argv];
+  if (args[0] === "fleet") {
+    args.shift();
+  }
+
+  const options = {
+    format: "text",
+    outFile: null,
+    topRepos: 20,
+    topRules: 10,
+    help: false,
+    historyPaths: []
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const token = args[index];
+    if (token === "--help" || token === "-h") {
+      options.help = true;
+      continue;
+    }
+
+    if (token.startsWith("--")) {
+      if (token === "--format") {
+        options.format = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--out") {
+        options.outFile = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--top-repos") {
+        options.topRepos = Number(requireOptionValue(args, index, token));
+        index += 1;
+        continue;
+      }
+      if (token === "--top-rules") {
+        options.topRules = Number(requireOptionValue(args, index, token));
+        index += 1;
+        continue;
+      }
+      throw new Error(`Unknown option: ${token}`);
+    }
+
+    options.historyPaths.push(token);
+  }
+
+  if (!VALID_FLEET_FORMATS.has(options.format)) {
+    throw new Error(`Invalid --format value for fleet: ${options.format}`);
+  }
+  if (!Number.isInteger(options.topRepos) || options.topRepos <= 0) {
+    throw new Error(`Invalid --top-repos value: ${options.topRepos}`);
+  }
+  if (!Number.isInteger(options.topRules) || options.topRules <= 0) {
+    throw new Error(`Invalid --top-rules value: ${options.topRules}`);
+  }
+  if (!options.help && options.historyPaths.length === 0) {
+    throw new Error("fleet requires at least one history file path");
+  }
+
+  return options;
+}
+
 function writeTextFile(filePath, content) {
   const resolved = path.resolve(filePath);
   fs.mkdirSync(path.dirname(resolved), { recursive: true });
@@ -206,7 +292,29 @@ function toBaselineSnapshot(report) {
 
 function main() {
   try {
-    const options = parseArgs(process.argv.slice(2));
+    const argv = process.argv.slice(2);
+    const command = argv[0];
+
+    if (command === "fleet") {
+      const fleetOptions = parseFleetArgs(argv);
+      if (fleetOptions.help) {
+        printHelp();
+        return;
+      }
+      const fleetReport = buildFleetReport(fleetOptions.historyPaths, {
+        topRepos: fleetOptions.topRepos,
+        topRules: fleetOptions.topRules
+      });
+      const fleetOutput = formatFleetReport(fleetReport, fleetOptions.format);
+      process.stdout.write(fleetOutput);
+      process.stdout.write("\n");
+      if (fleetOptions.outFile) {
+        writeTextFile(fleetOptions.outFile, fleetOutput);
+      }
+      return;
+    }
+
+    const options = parseScanArgs(argv);
     if (options.help) {
       printHelp();
       return;
@@ -221,6 +329,7 @@ function main() {
       preset: options.preset,
       maxFiles: options.maxFiles,
       changedSince: options.changedSince,
+      cacheFile: options.useCache ? options.cacheFile : null,
       useGitIgnore: options.useGitIgnore
     });
 

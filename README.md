@@ -1,4 +1,4 @@
-# Repo Sleep Doctor
+﻿# Repo Sleep Doctor
 
 Language: English | [简体中文](README.zh-CN.md)
 
@@ -7,9 +7,9 @@ Language: English | [简体中文](README.zh-CN.md)
 Inspiration sources:
 - GitHub [`ianlewis/todos`](https://github.com/ianlewis/todos) (actionable TODO extraction)
 - GitHub [`DavidAnson/markdownlint`](https://github.com/DavidAnson/markdownlint) (rule-driven quality checks)
-- Common repo health check patterns used in CI pipelines
+- Common repository health-check patterns used in CI pipelines
 
-## What it does
+## What It Does
 
 The scanner detects practical release blockers:
 - unresolved merge markers
@@ -20,8 +20,9 @@ The scanner detects practical release blockers:
 - missing `build/test/lint` scripts in `package.json`
 - missing test files
 - oversized files
-- interactive HTML dashboard with severity/rule/file hotspot views
-- fast-path heuristics that skip expensive line scans for low-signal files
+- HTML dashboard (severity mix, top rules, hotspot files, score trend)
+- fleet dashboard that aggregates multiple repo history files
+- optional file-level cache for faster repeated scans
 
 ## Installation
 
@@ -46,17 +47,23 @@ npm run scan:sarif
 # HTML visual report
 npm run scan:html
 
-# JUnit XML report for CI test dashboards
+# JUnit XML report for CI dashboards
 npm run scan:junit
 
-# only scan files changed since main
+# scan only files changed since main
 node src/cli.js . --changed-since main --fail-on p1
 
-# run with built-in preset (release-focused rules)
+# use built-in preset (release-focused rules)
 node src/cli.js . --preset release --fail-on p1
 
-# persist trend history for dashboard reports
+# persist trend history and output HTML dashboard
 node src/cli.js . --history-file reports/history.json --history-limit 120 --format html --out reports/scan.html --fail-on none
+
+# enable file-level cache for faster reruns
+node src/cli.js . --cache-file reports/scan.cache.json --format text --fail-on none
+
+# aggregate multiple repository histories into fleet dashboard
+node src/cli.js fleet reports/repo-a.history.json reports/repo-b.history.json --format html --out reports/fleet.html
 ```
 
 ## CLI Usage
@@ -64,13 +71,16 @@ node src/cli.js . --history-file reports/history.json --history-limit 120 --form
 ```bash
 node src/cli.js [path] [options]
 node src/cli.js scan [path] [options]
+node src/cli.js fleet <history-file...> [options]
 ```
 
-Options:
+Scan options:
 - `--format <text|json|markdown|sarif|html|junit>` output format, default `text`
 - `--out <file>` write formatted output to file
 - `--config <file>` use a custom config file path
 - `--preset <all|release|security>` use built-in rule presets
+- `--cache-file <file>` enable file-level cache for scan acceleration
+- `--no-cache` disable cache reuse even if cache file is provided
 - `--max-files <number>` cap total scanned files
 - `--changed-since <git-ref>` only scan files changed since the given git ref
 - `--fail-on <none|p0|p1|p2>` set process exit threshold, default `p0`
@@ -82,6 +92,12 @@ Options:
 - `--no-gitignore` disable `.gitignore` matching
 - `--list-presets` print available built-in presets and enabled rules
 
+Fleet options:
+- `--format <text|json|markdown|html>` output format, default `text`
+- `--out <file>` write fleet report to file
+- `--top-repos <number>` limit top repositories in output (default 20)
+- `--top-rules <number>` limit top rules in output (default 10)
+
 ## Baseline Workflow
 
 ```bash
@@ -90,6 +106,16 @@ node src/cli.js . --format json --save-baseline reports/baseline.json --fail-on 
 
 # compare against baseline and show only new issues
 node src/cli.js . --baseline reports/baseline.json --only-new --format text --fail-on p1
+```
+
+## History + Fleet Workflow
+
+```bash
+# per-repo history snapshot (run in each repo)
+node src/cli.js . --history-file reports/history.json --history-limit 200 --format text --fail-on none
+
+# aggregate multiple repos (run from any location)
+node src/cli.js fleet repo-a/reports/history.json repo-b/reports/history.json --format markdown --out reports/fleet.md
 ```
 
 ## Config
@@ -116,31 +142,14 @@ Create `.repo-sleep-doctor.json` in repository root:
 ```
 
 Preset notes:
-- `all`: enable all built-in rules (default behavior)
-- `release`: focus on release-readiness and quality rules, disable secret-only checks
-- `security`: focus on security/secret exposure checks, disable release-readiness rules
+- `all`: enable all built-in rules (default)
+- `release`: focus on release-readiness and quality rules
+- `security`: focus on secret/security risks
 
-Rule IDs currently exposed include (details in [`docs/rules.md`](docs/rules.md)):
-- `merge-marker`
-- `private-key-block`
-- `aws-key`
-- `generic-secret`
-- `console-call`
-- `debugger`
-- `print-call`
-- `todo-comment`
-- `large-file`
-- `missing-readme`
-- `readme-install`
-- `readme-usage`
-- `missing-build-script`
-- `missing-test-script`
-- `missing-lint-script`
-- `invalid-package-json`
-- `missing-tests`
+Rule IDs are documented in [`docs/rules.md`](docs/rules.md).
 
 Integration guide:
-- GitHub Actions setup: [`docs/guides/github-action.md`](docs/guides/github-action.md)
+- GitHub Actions: [`docs/guides/github-action.md`](docs/guides/github-action.md)
 
 ## Scoring
 
@@ -156,5 +165,5 @@ Score is clamped at `0`.
 ```bash
 npm run lint
 npm test
-npm run example
+npm run build
 ```
