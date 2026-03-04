@@ -672,6 +672,60 @@ test("fleet report aggregates multiple history sources", () => {
   assert.equal(parsed.repos.length, 2);
 });
 
+test("fleet report html includes execution telemetry panels", () => {
+  const report = {
+    tool: "repo-sleep-doctor",
+    generatedAt: "2026-03-04T00:00:00.000Z",
+    stats: {
+      repoCount: 1,
+      scannedRepoCount: 1,
+      totalScans: 1,
+      avgLatestScore: 95,
+      riskRepos: 0
+    },
+    repos: [
+      {
+        repo: "repo-a",
+        latestScore: 95,
+        avgScore: 95,
+        scoreDelta: 0,
+        scans: 1,
+        latestSummary: { p0: 0, p1: 0, p2: 1 }
+      }
+    ],
+    topRules: [{ ruleId: "todo-comment", count: 1 }],
+    execution: {
+      failOn: "p1",
+      continueOnError: true,
+      totalRepos: 2,
+      scannedRepos: 1,
+      failedRepos: 1,
+      errorRepos: 1,
+      durationMs: 1200,
+      repoRuns: [
+        {
+          repoId: "repo-a",
+          status: "passed",
+          durationMs: 300,
+          cache: { hitRate: 0.8, hits: 8, misses: 2 }
+        },
+        {
+          repoId: "repo-b",
+          status: "error",
+          durationMs: 900,
+          cache: { hitRate: 0.2, hits: 2, misses: 8 }
+        }
+      ]
+    }
+  };
+
+  const html = formatFleetReport(report, "html");
+  assert.match(html, /Execution Overview/);
+  assert.match(html, /Slowest Repositories/);
+  assert.match(html, /Cache Hit Ranking/);
+  assert.match(html, /Success Rate/);
+});
+
 test("cli fleet command outputs json report", () => {
   const cliPath = path.join(__dirname, "..", "src", "cli.js");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-cli-"));

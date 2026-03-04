@@ -1,4 +1,4 @@
-const token = "sk_test_1234567890";
+const token = "hardcoded_token_for_test_only_1234567890";
 
 function runApp() {
   // TODO: replace this mock implementation

@@ -23,6 +23,7 @@ The scanner detects practical release blockers:
 - HTML dashboard (severity mix, top rules, hotspot files, score trend)
 - fleet dashboard that aggregates multiple repo history files
 - optional file-level cache for faster repeated scans
+- execution telemetry in fleet reports (success rate, errors, slow repos, cache ranking)
 
 ## Installation
 

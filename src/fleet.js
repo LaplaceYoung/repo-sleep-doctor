@@ -21,6 +21,57 @@ function safeNumber(value, fallback = 0) {
   return numeric;
 }
 
+function summarizeExecution(execution) {
+  if (!execution || typeof execution !== "object") {
+    return null;
+  }
+
+  const totalRepos = safeNumber(execution.totalRepos, 0);
+  const scannedRepos = safeNumber(execution.scannedRepos, 0);
+  const failedRepos = safeNumber(execution.failedRepos, 0);
+  const errorRepos = safeNumber(execution.errorRepos, 0);
+  const durationMs = safeNumber(execution.durationMs, 0);
+  const successRate = totalRepos > 0 ? Number(((Math.max(totalRepos - failedRepos, 0) / totalRepos) * 100).toFixed(1)) : 100;
+  const repoRuns = Array.isArray(execution.repoRuns) ? execution.repoRuns : [];
+
+  const slowRepos = repoRuns
+    .filter((repo) => typeof repo === "object" && repo && Number.isFinite(Number(repo.durationMs)))
+    .map((repo) => ({
+      repoId: String(repo.repoId || ""),
+      durationMs: safeNumber(repo.durationMs, 0),
+      status: String(repo.status || ""),
+      path: String(repo.path || "")
+    }))
+    .sort((a, b) => b.durationMs - a.durationMs || a.repoId.localeCompare(b.repoId))
+    .slice(0, 5);
+
+  const cacheRank = repoRuns
+    .filter((repo) => repo && repo.cache && Number.isFinite(Number(repo.cache.hitRate)))
+    .map((repo) => ({
+      repoId: String(repo.repoId || ""),
+      hitRate: Number((safeNumber(repo.cache.hitRate, 0) * 100).toFixed(1)),
+      hits: safeNumber(repo.cache.hits, 0),
+      misses: safeNumber(repo.cache.misses, 0)
+    }))
+    .sort((a, b) => b.hitRate - a.hitRate || b.hits - a.hits || a.repoId.localeCompare(b.repoId))
+    .slice(0, 5);
+
+  return {
+    totalRepos,
+    scannedRepos,
+    failedRepos,
+    errorRepos,
+    durationMs,
+    successRate,
+    failOn: execution.failOn || "p0",
+    continueOnError: Boolean(execution.continueOnError),
+    startedAt: execution.startedAt || null,
+    finishedAt: execution.finishedAt || null,
+    slowRepos,
+    cacheRank
+  };
+}
+
 function detectRepoName(historyPath) {
   const resolved = path.resolve(historyPath);
   const stem = path.basename(resolved, path.extname(resolved));
@@ -153,6 +204,16 @@ function formatFleetText(report) {
       `- ${repo.repo}: score=${repo.latestScore}, avg=${repo.avgScore}, delta=${repo.scoreDelta >= 0 ? "+" : ""}${repo.scoreDelta}, scans=${repo.scans}, P0=${repo.latestSummary.p0 || 0}, P1=${repo.latestSummary.p1 || 0}, P2=${repo.latestSummary.p2 || 0}`
     );
   }
+
+  const executionSummary = summarizeExecution(report.execution);
+  if (executionSummary) {
+    lines.push("");
+    lines.push("Execution:");
+    lines.push(
+      `- total=${executionSummary.totalRepos} scanned=${executionSummary.scannedRepos} failed=${executionSummary.failedRepos} errors=${executionSummary.errorRepos} successRate=${executionSummary.successRate}% durationMs=${executionSummary.durationMs}`
+    );
+    lines.push(`- failOn=${executionSummary.failOn} continueOnError=${executionSummary.continueOnError}`);
+  }
   return lines.join("\n");
 }
 
@@ -192,10 +253,26 @@ function formatFleetMarkdown(report) {
       } | ${repo.latestSummary.p1 || 0} | ${repo.latestSummary.p2 || 0} |`
     );
   }
+
+  const executionSummary = summarizeExecution(report.execution);
+  if (executionSummary) {
+    lines.push("");
+    lines.push("## Execution");
+    lines.push("");
+    lines.push(`- Total Repos: \`${executionSummary.totalRepos}\``);
+    lines.push(`- Scanned Repos: \`${executionSummary.scannedRepos}\``);
+    lines.push(`- Failed Repos: \`${executionSummary.failedRepos}\``);
+    lines.push(`- Error Repos: \`${executionSummary.errorRepos}\``);
+    lines.push(`- Success Rate: \`${executionSummary.successRate}%\``);
+    lines.push(`- Duration: \`${executionSummary.durationMs}ms\``);
+    lines.push(`- Fail On: \`${executionSummary.failOn}\``);
+    lines.push(`- Continue On Error: \`${executionSummary.continueOnError}\``);
+  }
   return lines.join("\n");
 }
 
 function formatFleetHtml(report) {
+  const executionSummary = summarizeExecution(report.execution);
   const topRuleMax = report.topRules.length > 0 ? report.topRules[0].count : 1;
   const ruleRows =
     report.topRules.length === 0
@@ -227,6 +304,58 @@ function formatFleetHtml(report) {
           )
           .join("");
 
+  const executionMetrics = executionSummary
+    ? `<section class="metrics exec-metrics">
+        <div class="metric"><div class="k">Success Rate</div><div class="v">${executionSummary.successRate}%</div></div>
+        <div class="metric"><div class="k">Failed</div><div class="v">${executionSummary.failedRepos}</div></div>
+        <div class="metric"><div class="k">Errors</div><div class="v">${executionSummary.errorRepos}</div></div>
+        <div class="metric"><div class="k">Duration</div><div class="v">${executionSummary.durationMs}ms</div></div>
+      </section>`
+    : "";
+
+  const slowRepoRows = executionSummary
+    ? executionSummary.slowRepos
+        .map(
+          (repo) =>
+            `<tr><td>${escapeHtml(repo.repoId || "(unknown)")}</td><td>${repo.durationMs}</td><td>${escapeHtml(repo.status)}</td></tr>`
+        )
+        .join("")
+    : "";
+  const cacheRows = executionSummary
+    ? executionSummary.cacheRank
+        .map(
+          (repo) =>
+            `<tr><td>${escapeHtml(repo.repoId || "(unknown)")}</td><td>${repo.hitRate}%</td><td>${repo.hits}/${repo.misses}</td></tr>`
+        )
+        .join("")
+    : "";
+  const executionBlock = executionSummary
+    ? `<section class="panel exec-panel">
+        <h2>Execution Overview</h2>
+        <div class="exec-meta">
+          <span>failOn=${escapeHtml(executionSummary.failOn)}</span>
+          <span>continueOnError=${executionSummary.continueOnError}</span>
+          <span>scanned=${executionSummary.scannedRepos}/${executionSummary.totalRepos}</span>
+        </div>
+        <div class="exec-grid">
+          <div class="mini-table">
+            <h3>Slowest Repositories</h3>
+            <table>
+              <thead><tr><th>Repo</th><th>Duration (ms)</th><th>Status</th></tr></thead>
+              <tbody>${slowRepoRows || '<tr><td colspan="3">No run data.</td></tr>'}</tbody>
+            </table>
+          </div>
+          <div class="mini-table">
+            <h3>Cache Hit Ranking</h3>
+            <table>
+              <thead><tr><th>Repo</th><th>Hit Rate</th><th>Hits/Misses</th></tr></thead>
+              <tbody>${cacheRows || '<tr><td colspan="3">No cache data.</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+      </section>`
+    : "";
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -248,6 +377,13 @@ function formatFleetHtml(report) {
     .grid { margin-top: 14px; display: grid; grid-template-columns: 1fr; gap: 12px; }
     .panel { padding: 12px; }
     .panel h2 { margin: 0 0 8px; font-size: 16px; color: #24455f; }
+    .exec-metrics { margin-top: 12px; }
+    .exec-panel { margin-top: 12px; }
+    .exec-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: #3f5c74; margin-bottom: 8px; }
+    .exec-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .mini-table h3 { margin: 0 0 6px; font-size: 14px; color: #24455f; }
+    .mini-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .mini-table th, .mini-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #edf3f8; }
     .bar-row { display: grid; grid-template-columns: 160px 1fr 50px; gap: 8px; align-items: center; margin-bottom: 8px; }
     .bar-label { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .bar-track { background: #edf3f8; border-radius: 999px; height: 10px; overflow: hidden; }
@@ -263,6 +399,7 @@ function formatFleetHtml(report) {
       .metrics { grid-template-columns: repeat(2, minmax(100px, 1fr)); }
       th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4) { display: none; }
       .bar-row { grid-template-columns: 120px 1fr 40px; }
+      .exec-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -279,12 +416,14 @@ function formatFleetHtml(report) {
         <div class="metric"><div class="k">Risk Repos</div><div class="v">${report.stats.riskRepos}</div></div>
       </div>
     </section>
+    ${executionMetrics}
     <section class="grid">
       <article class="panel">
         <h2>Top Rules (latest snapshots)</h2>
         ${ruleRows}
       </article>
     </section>
+    ${executionBlock}
     <section class="table-wrap">
       <table>
         <thead>
