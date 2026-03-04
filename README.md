@@ -1,5 +1,7 @@
 # Repo Sleep Doctor
 
+Language: English | [简体中文](README.zh-CN.md)
+
 `repo-sleep-doctor` is a zero-dependency Node CLI that scans repositories and outputs release risk reports with severity levels (`P0/P1/P2`).
 
 Inspiration sources:
@@ -71,6 +73,7 @@ Options:
 - `--only-new` show only findings introduced after baseline
 - `--save-baseline <file>` save current JSON report for future comparison
 - `--no-gitignore` disable `.gitignore` matching
+- `--list-presets` print available built-in presets and enabled rules
 
 ## Baseline Workflow
 
@@ -128,6 +131,9 @@ Rule IDs currently exposed include (details in [`docs/rules.md`](docs/rules.md))
 - `missing-lint-script`
 - `invalid-package-json`
 - `missing-tests`
+
+Integration guide:
+- GitHub Actions setup: [`docs/guides/github-action.md`](docs/guides/github-action.md)
 
 ## Scoring
 

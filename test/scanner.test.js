@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { execFileSync } = require("child_process");
+const { execFileSync, spawnSync } = require("child_process");
 
 const { compareWithBaseline, createOnlyNewReport, loadBaseline } = require("../src/baseline");
 const { formatSarif, formatMarkdown, formatJunit, shouldFail } = require("../src/reporters");
@@ -246,4 +246,17 @@ test("security preset focuses on security and excludes release-readiness rules",
 
 test("invalid preset is rejected", () => {
   assert.throws(() => scanRepository(badRepo, { preset: "unknown-preset" }), /Invalid preset/i);
+});
+
+test("cli can list built-in presets", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const result = spawnSync(process.execPath, [cliPath, "--list-presets"], {
+    encoding: "utf8",
+    cwd: path.join(__dirname, "..")
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /Built-in presets:/);
+  assert.match(result.stdout, /release/);
+  assert.match(result.stdout, /security/);
 });

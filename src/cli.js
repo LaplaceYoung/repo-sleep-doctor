@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { compareWithBaseline, createOnlyNewReport, loadBaseline } = require("./baseline");
+const { PRESET_RULES } = require("./rule-catalog");
 const { scanRepository } = require("./scanner");
 const { formatReport, shouldFail } = require("./reporters");
 
@@ -30,9 +31,19 @@ Options:
   --only-new                                Show only findings not present in baseline
   --save-baseline <file>                    Save current JSON report for future baseline runs
   --no-gitignore                            Ignore .gitignore and scan all matched files
+  --list-presets                            Print built-in presets and their enabled rules
   --help                                    Show help
 `;
   process.stdout.write(message.trimStart());
+}
+
+function printPresets() {
+  const lines = ["Built-in presets:"];
+  for (const [name, rules] of Object.entries(PRESET_RULES)) {
+    lines.push(`- ${name} (${rules.length} rules)`);
+    lines.push(`  ${rules.join(", ")}`);
+  }
+  process.stdout.write(`${lines.join("\n")}\n`);
 }
 
 function requireOptionValue(args, index, optionName) {
@@ -62,6 +73,7 @@ function parseArgs(argv) {
     onlyNew: false,
     saveBaselinePath: null,
     useGitIgnore: undefined,
+    listPresets: false,
     help: false
   };
 
@@ -80,6 +92,10 @@ function parseArgs(argv) {
 
     if (token === "--no-gitignore") {
       options.useGitIgnore = false;
+      continue;
+    }
+    if (token === "--list-presets") {
+      options.listPresets = true;
       continue;
     }
 
@@ -175,6 +191,10 @@ function main() {
     const options = parseArgs(process.argv.slice(2));
     if (options.help) {
       printHelp();
+      return;
+    }
+    if (options.listPresets) {
+      printPresets();
       return;
     }
 
