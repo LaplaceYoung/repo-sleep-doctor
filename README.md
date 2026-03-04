@@ -54,6 +54,9 @@ node src/cli.js . --changed-since main --fail-on p1
 
 # run with built-in preset (release-focused rules)
 node src/cli.js . --preset release --fail-on p1
+
+# persist trend history for dashboard reports
+node src/cli.js . --history-file reports/history.json --history-limit 120 --format html --out reports/scan.html --fail-on none
 ```
 
 ## CLI Usage
@@ -74,6 +77,8 @@ Options:
 - `--baseline <file>` compare current scan against previous JSON report
 - `--only-new` show only findings introduced after baseline
 - `--save-baseline <file>` save current JSON report for future comparison
+- `--history-file <file>` append summary snapshot to history JSON
+- `--history-limit <number>` keep only latest N history entries (default 120)
 - `--no-gitignore` disable `.gitignore` matching
 - `--list-presets` print available built-in presets and enabled rules
 

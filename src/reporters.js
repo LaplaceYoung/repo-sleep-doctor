@@ -70,6 +70,9 @@ function formatText(report) {
       `Analysis: textCandidates=${report.analysis.textCandidates} textRead=${report.analysis.textFilesRead} lineScanSkipped=${report.analysis.lineScanSkippedFiles} linesScanned=${report.analysis.linesScanned}`
     );
   }
+  if (Array.isArray(report.history)) {
+    lines.push(`History points: ${report.history.length}`);
+  }
 
   if (report.configPath) {
     lines.push(`Config: ${report.configPath}`);
@@ -128,6 +131,9 @@ function formatMarkdown(report) {
     lines.push(
       `- Analysis: \`textCandidates=${report.analysis.textCandidates} textRead=${report.analysis.textFilesRead} lineScanSkipped=${report.analysis.lineScanSkippedFiles} linesScanned=${report.analysis.linesScanned}\``
     );
+  }
+  if (Array.isArray(report.history)) {
+    lines.push(`- History points: \`${report.history.length}\``);
   }
 
   if (report.baseline) {
@@ -348,6 +354,43 @@ function formatHtml(report) {
     </div>`
     : "";
 
+  const historyEntries = Array.isArray(report.history) ? report.history.slice(-30) : [];
+  const trendEntries = historyEntries.length > 0 ? historyEntries : [{ scannedAt: report.scannedAt, score: report.score }];
+  const trendScores = trendEntries.map((entry) => {
+    const raw = Number(entry && entry.score);
+    if (!Number.isFinite(raw)) {
+      return 0;
+    }
+    if (raw < 0) return 0;
+    if (raw > 100) return 100;
+    return raw;
+  });
+  const trendWidth = 760;
+  const trendHeight = 170;
+  const trendPadding = 20;
+  const trendStep = trendScores.length > 1 ? (trendWidth - trendPadding * 2) / (trendScores.length - 1) : 0;
+  const trendPoints = trendScores.map((score, index) => {
+    const x = trendPadding + trendStep * index;
+    const y = trendPadding + ((100 - score) / 100) * (trendHeight - trendPadding * 2);
+    return { x, y, score };
+  });
+  const trendPolyline = trendPoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  const trendMin = Math.min(...trendScores);
+  const trendMax = Math.max(...trendScores);
+  const trendLatest = trendScores[trendScores.length - 1];
+  const trendDelta = trendScores.length > 1 ? trendLatest - trendScores[0] : 0;
+  const recentHistoryRows = trendEntries
+    .slice(-6)
+    .reverse()
+    .map((entry) => {
+      const summary = entry && entry.summary ? entry.summary : { p0: 0, p1: 0, p2: 0 };
+      const preset = entry && entry.preset ? entry.preset : "all";
+      return `<tr><td>${escapeHtml(String(entry.scannedAt || ""))}</td><td>${escapeHtml(String(entry.score || 0))}</td><td>${escapeHtml(
+        preset
+      )}</td><td>P0=${summary.p0 || 0} P1=${summary.p1 || 0} P2=${summary.p2 || 0}</td></tr>`;
+    })
+    .join("");
+
   const total = Math.max(report.summary.total || report.findings.length, 1);
   const p0Pct = ((report.summary.p0 / total) * 100).toFixed(2);
   const p1Pct = ((report.summary.p1 / total) * 100).toFixed(2);
@@ -452,6 +495,16 @@ function formatHtml(report) {
     th, td { padding: 11px 12px; border-bottom: 1px solid #ebf1f6; vertical-align: top; text-align: left; font-size: 13px; }
     th { background: #f7fbff; color: #345; font-weight: 700; }
     tr:last-child td { border-bottom: 0; }
+    .trend { margin-top: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+    .trend-head { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; margin-bottom: 10px; }
+    .trend-head h2 { margin: 0; font-size: 16px; color: #24455f; }
+    .trend-meta { font-size: 12px; color: #4d6378; }
+    .trend-grid { stroke: #e7eff6; stroke-width: 1; }
+    .trend-line { fill: none; stroke: #145a7a; stroke-width: 2.5; }
+    .trend-dot { fill: #145a7a; }
+    .trend-axis { font-size: 11px; fill: #5f7589; }
+    .history-mini table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .history-mini th, .history-mini td { border-bottom: 1px solid #edf3f8; text-align: left; padding: 6px 4px; }
     .sev { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 700; color: white; }
     .sev-p0 { background: var(--p0); } .sev-p1 { background: var(--p1); } .sev-p2 { background: var(--p2); }
     .suggestion { margin-top: 6px; color: #4e647a; }
@@ -498,6 +551,38 @@ function formatHtml(report) {
           <tbody>${hotspotRows}</tbody>
         </table>
       </article>
+    </section>
+    <section class="trend">
+      <div class="trend-head">
+        <h2>Score Trend</h2>
+        <span class="trend-meta">points=${trendScores.length}</span>
+        <span class="trend-meta">latest=${trendLatest}</span>
+        <span class="trend-meta">min=${trendMin}</span>
+        <span class="trend-meta">max=${trendMax}</span>
+        <span class="trend-meta">delta=${trendDelta >= 0 ? "+" : ""}${trendDelta.toFixed(1)}</span>
+      </div>
+      <svg viewBox="0 0 ${trendWidth} ${trendHeight}" width="100%" height="170" role="img" aria-label="score trend chart">
+        <line class="trend-grid" x1="${trendPadding}" y1="${trendPadding}" x2="${trendPadding}" y2="${trendHeight - trendPadding}" />
+        <line class="trend-grid" x1="${trendPadding}" y1="${trendHeight - trendPadding}" x2="${trendWidth - trendPadding}" y2="${trendHeight - trendPadding}" />
+        <line class="trend-grid" x1="${trendPadding}" y1="${trendPadding + ((100 - 75) / 100) * (trendHeight - trendPadding * 2)}" x2="${trendWidth - trendPadding}" y2="${trendPadding + ((100 - 75) / 100) * (trendHeight - trendPadding * 2)}" />
+        <line class="trend-grid" x1="${trendPadding}" y1="${trendPadding + ((100 - 50) / 100) * (trendHeight - trendPadding * 2)}" x2="${trendWidth - trendPadding}" y2="${trendPadding + ((100 - 50) / 100) * (trendHeight - trendPadding * 2)}" />
+        <line class="trend-grid" x1="${trendPadding}" y1="${trendPadding + ((100 - 25) / 100) * (trendHeight - trendPadding * 2)}" x2="${trendWidth - trendPadding}" y2="${trendPadding + ((100 - 25) / 100) * (trendHeight - trendPadding * 2)}" />
+        <polyline class="trend-line" points="${trendPolyline}" />
+        ${trendPoints
+          .map(
+            (point) =>
+              `<circle class="trend-dot" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="3"><title>score=${point.score}</title></circle>`
+          )
+          .join("")}
+        <text class="trend-axis" x="${trendPadding}" y="${trendPadding - 4}">100</text>
+        <text class="trend-axis" x="${trendPadding}" y="${trendHeight - trendPadding + 14}">0</text>
+      </svg>
+      <div class="history-mini">
+        <table>
+          <thead><tr><th>Scanned At</th><th>Score</th><th>Preset</th><th>Summary</th></tr></thead>
+          <tbody>${recentHistoryRows}</tbody>
+        </table>
+      </div>
     </section>
     <section class="controls">
       <button class="pill active" data-filter="all">All</button>

@@ -57,6 +57,7 @@ jobs:
           node src/cli.js . --preset security --format text --fail-on p0
           node src/cli.js . --preset release --format junit --out reports/scan-release.junit.xml --fail-on p0
           node src/cli.js . --preset release --format text --fail-on p0
+          node src/cli.js . --preset release --history-file reports/history.json --history-limit 200 --format text --fail-on none
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
@@ -70,3 +71,4 @@ jobs:
           path: |
             reports/scan-security.sarif
             reports/scan-release.junit.xml
+            reports/history.json

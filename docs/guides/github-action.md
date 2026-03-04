@@ -30,6 +30,7 @@ jobs:
       - run: npm run build
       - run: node src/cli.js . --preset security --format sarif --out reports/scan-security.sarif --fail-on p0
       - run: node src/cli.js . --preset release --format junit --out reports/scan-release.junit.xml --fail-on p0
+      - run: node src/cli.js . --preset release --history-file reports/history.json --history-limit 200 --format text --fail-on none
 ```
 
 ## PR-diff scan mode

@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { compareWithBaseline, createOnlyNewReport, loadBaseline } = require("./baseline");
+const { DEFAULT_HISTORY_LIMIT, appendHistory, toHistoryEntry, trimHistory } = require("./history");
 const { PRESET_RULES } = require("./rule-catalog");
 const { scanRepository } = require("./scanner");
 const { formatReport, shouldFail } = require("./reporters");
@@ -30,6 +31,8 @@ Options:
   --baseline <file>                         Compare against a previous JSON report
   --only-new                                Show only findings not present in baseline
   --save-baseline <file>                    Save current JSON report for future baseline runs
+  --history-file <file>                     Append scan summary to history JSON file
+  --history-limit <number>                  Keep only latest N history entries (default: 120)
   --no-gitignore                            Ignore .gitignore and scan all matched files
   --list-presets                            Print built-in presets and their enabled rules
   --help                                    Show help
@@ -72,6 +75,8 @@ function parseArgs(argv) {
     baselinePath: null,
     onlyNew: false,
     saveBaselinePath: null,
+    historyFile: null,
+    historyLimit: DEFAULT_HISTORY_LIMIT,
     useGitIgnore: undefined,
     listPresets: false,
     help: false
@@ -145,6 +150,16 @@ function parseArgs(argv) {
         index += 1;
         continue;
       }
+      if (token === "--history-file") {
+        options.historyFile = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--history-limit") {
+        options.historyLimit = Number(requireOptionValue(args, index, token));
+        index += 1;
+        continue;
+      }
 
       throw new Error(`Unknown option: ${token}`);
     }
@@ -164,6 +179,9 @@ function parseArgs(argv) {
   }
   if (options.maxFiles !== undefined && (!Number.isInteger(options.maxFiles) || options.maxFiles <= 0)) {
     throw new Error(`Invalid --max-files value: ${options.maxFiles}`);
+  }
+  if (!Number.isInteger(options.historyLimit) || options.historyLimit <= 0) {
+    throw new Error(`Invalid --history-limit value: ${options.historyLimit}`);
   }
   if (options.onlyNew && !options.baselinePath) {
     throw new Error("--only-new requires --baseline <file>");
@@ -212,6 +230,13 @@ function main() {
       const comparison = compareWithBaseline(currentReport, baseline);
       currentReport.baseline = comparison;
       outputReport = options.onlyNew ? createOnlyNewReport(currentReport, comparison) : currentReport;
+    }
+
+    const currentHistoryEntry = toHistoryEntry(currentReport);
+    if (options.historyFile) {
+      outputReport.history = appendHistory(options.historyFile, currentHistoryEntry, options.historyLimit);
+    } else {
+      outputReport.history = trimHistory([currentHistoryEntry], options.historyLimit);
     }
 
     const output = formatReport(outputReport, options.format);

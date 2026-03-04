@@ -139,9 +139,25 @@ test("formatJunit returns valid junit-like xml payload", () => {
 
 test("formatHtml contains dashboard panels and filter controls", () => {
   const report = scanRepository(badRepo, { maxFiles: 100 });
+  report.history = [
+    {
+      scannedAt: "2026-03-04T00:00:00.000Z",
+      score: 92,
+      summary: { p0: 0, p1: 1, p2: 0 },
+      preset: "all"
+    },
+    {
+      scannedAt: "2026-03-04T00:10:00.000Z",
+      score: 88,
+      summary: { p0: 0, p1: 2, p2: 0 },
+      preset: "release"
+    }
+  ];
   const html = formatHtml(report);
   assert.match(html, /Top Rules/);
   assert.match(html, /Hotspot Files/);
+  assert.match(html, /Score Trend/);
+  assert.match(html, /Scanned At/);
   assert.match(html, /data-filter="p0"/);
   assert.match(html, /finding-search/);
 });
@@ -278,4 +294,42 @@ test("cli can list built-in presets", () => {
   assert.match(result.stdout, /Built-in presets:/);
   assert.match(result.stdout, /release/);
   assert.match(result.stdout, /security/);
+});
+
+test("cli can persist scan history to json file", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-history-"));
+  const historyPath = path.join(dir, "history.json");
+
+  const run1 = spawnSync(
+    process.execPath,
+    [cliPath, goodRepo, "--history-file", historyPath, "--history-limit", "2", "--format", "text", "--fail-on", "none"],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+  const run2 = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      goodRepo,
+      "--history-file",
+      historyPath,
+      "--history-limit",
+      "2",
+      "--preset",
+      "release",
+      "--format",
+      "text",
+      "--fail-on",
+      "none"
+    ],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+
+  assert.equal(run1.status, 0);
+  assert.equal(run2.status, 0);
+  const payload = JSON.parse(fs.readFileSync(historyPath, "utf8"));
+  assert.equal(Array.isArray(payload.entries), true);
+  assert.equal(payload.entries.length, 2);
+  assert.equal(typeof payload.entries[0].score, "number");
+  assert.equal(payload.entries[1].preset, "release");
 });

@@ -48,6 +48,9 @@ node src/cli.js . --changed-since main --fail-on p1
 
 # 使用内置规则预设（发布导向）
 node src/cli.js . --preset release --fail-on p1
+
+# 持久化趋势历史并输出带趋势图的 HTML 报告
+node src/cli.js . --history-file reports/history.json --history-limit 120 --format html --out reports/scan.html --fail-on none
 ```
 
 ## CLI 参数
@@ -62,6 +65,8 @@ node src/cli.js . --preset release --fail-on p1
 - `--baseline <file>` 与历史基线报告对比
 - `--only-new` 仅输出相对基线的新问题
 - `--save-baseline <file>` 保存当前扫描作为基线
+- `--history-file <file>` 追加扫描摘要到历史 JSON 文件
+- `--history-limit <number>` 仅保留最近 N 条历史记录（默认 120）
 - `--no-gitignore` 不使用 `.gitignore` 规则
 - `--list-presets` 输出内置预设及启用规则
 
