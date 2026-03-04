@@ -54,7 +54,6 @@ jobs:
 
       - name: Setup Pages
         id: setup_pages
-        if: steps.ensure_pages.outcome == 'success'
         continue-on-error: true
         uses: actions/configure-pages@v5
 
