@@ -56,6 +56,9 @@ function formatText(report) {
   lines.push(`Target: ${report.rootPath}`);
   lines.push(`Scanned: ${report.scannedAt}`);
   lines.push(`Duration: ${formatDuration(report.durationMs)} | Files: ${report.fileCount}`);
+  if (report.config && report.config.preset) {
+    lines.push(`Preset: ${report.config.preset}`);
+  }
   if (report.config && report.config.changedSince) {
     lines.push(`Changed since: ${report.config.changedSince}`);
   }
@@ -108,6 +111,9 @@ function formatMarkdown(report) {
   lines.push(`- Scanned: \`${report.scannedAt}\``);
   lines.push(`- Duration: \`${formatDuration(report.durationMs)}\``);
   lines.push(`- Files: \`${report.fileCount}\``);
+  if (report.config && report.config.preset) {
+    lines.push(`- Preset: \`${report.config.preset}\``);
+  }
   if (report.config && report.config.changedSince) {
     lines.push(`- Changed since: \`${report.config.changedSince}\``);
   }
@@ -386,6 +392,11 @@ function formatHtml(report) {
           <div><strong>Target:</strong> ${escapeHtml(report.rootPath)}</div>
           <div><strong>Scanned:</strong> ${escapeHtml(report.scannedAt)}</div>
           <div><strong>Duration:</strong> ${escapeHtml(formatDuration(report.durationMs))} | <strong>Files:</strong> ${report.fileCount}</div>
+          ${
+            report.config && report.config.preset
+              ? `<div><strong>Preset:</strong> ${escapeHtml(report.config.preset)}</div>`
+              : ""
+          }
           ${
             report.config && report.config.changedSince
               ? `<div><strong>Changed since:</strong> ${escapeHtml(report.config.changedSince)}</div>`

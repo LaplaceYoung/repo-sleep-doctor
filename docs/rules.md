@@ -2,6 +2,12 @@
 
 This document explains the built-in rules currently emitted by Repo Sleep Doctor.
 
+## Presets
+
+- `all`: all rules in this document
+- `release`: release-readiness and quality focused subset
+- `security`: secret exposure and merge-risk focused subset
+
 ## merge-marker
 
 - Severity: `p0`
@@ -103,4 +109,3 @@ This document explains the built-in rules currently emitted by Repo Sleep Doctor
 - Severity: `p1` or `p2` (depends on code volume)
 - Detects repository code with no test files found.
 - Fix: add at least smoke tests before release.
-

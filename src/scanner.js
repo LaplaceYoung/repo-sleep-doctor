@@ -169,6 +169,7 @@ function scanRepository(targetPath, cliOptions = {}) {
     configPath: config.configPath,
     config: {
       useGitIgnore: config.useGitIgnore,
+      preset: config.preset || null,
       changedSince
     },
     findings

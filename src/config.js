@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { disabledRulesForPreset, normalizePreset } = require("./rule-catalog");
 
 const DEFAULT_CONFIG = Object.freeze({
   ignoreDirs: [
@@ -124,6 +125,11 @@ function loadConfig(rootPath, cliOptions = {}) {
     : path.join(rootPath, ".repo-sleep-doctor.json");
 
   const fileConfig = readConfigFile(configPath);
+  const presetInput = cliOptions.preset !== undefined ? cliOptions.preset : fileConfig.preset;
+  const preset = normalizePreset(presetInput);
+
+  const presetDisabledRules = disabledRulesForPreset(preset);
+  const mergedDisabledRules = mergeStringArrays(presetDisabledRules, fileConfig.disabledRules);
 
   const merged = {
     ignoreDirs: mergeStringArrays(DEFAULT_CONFIG.ignoreDirs, fileConfig.ignoreDirs),
@@ -135,7 +141,8 @@ function loadConfig(rootPath, cliOptions = {}) {
     maxTextFileSizeKb: safePositiveNumber(fileConfig.maxTextFileSizeKb, DEFAULT_CONFIG.maxTextFileSizeKb),
     maxFiles: safePositiveNumber(fileConfig.maxFiles, DEFAULT_CONFIG.maxFiles),
     maxFindingsPerRule: safePositiveNumber(fileConfig.maxFindingsPerRule, DEFAULT_CONFIG.maxFindingsPerRule),
-    disabledRules: mergeStringArrays(DEFAULT_CONFIG.disabledRules, fileConfig.disabledRules),
+    preset,
+    disabledRules: mergeStringArrays(DEFAULT_CONFIG.disabledRules, mergedDisabledRules),
     severityOverrides: normalizeSeverityOverrides(fileConfig.severityOverrides),
     configPath: fs.existsSync(configPath) ? configPath : null
   };

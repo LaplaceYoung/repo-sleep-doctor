@@ -22,6 +22,7 @@ Options:
   --format <text|json|markdown|sarif|html|junit>  Output format (default: text)
   --out <file>                              Write report to file
   --config <file>                           Use custom config path
+  --preset <all|release|security>          Use built-in rule preset
   --max-files <number>                      Limit scanned files
   --changed-since <git-ref>                 Scan only files changed since git ref
   --fail-on <none|p0|p1|p2>                 Exit 1 if findings hit threshold (default: p0)
@@ -53,6 +54,7 @@ function parseArgs(argv) {
     format: "text",
     outFile: null,
     configPath: null,
+    preset: undefined,
     maxFiles: undefined,
     changedSince: null,
     failOn: "p0",
@@ -94,6 +96,11 @@ function parseArgs(argv) {
       }
       if (token === "--config") {
         options.configPath = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--preset") {
+        options.preset = requireOptionValue(args, index, token);
         index += 1;
         continue;
       }
@@ -173,6 +180,7 @@ function main() {
 
     const currentReport = scanRepository(options.targetPath, {
       configPath: options.configPath,
+      preset: options.preset,
       maxFiles: options.maxFiles,
       changedSince: options.changedSince,
       useGitIgnore: options.useGitIgnore

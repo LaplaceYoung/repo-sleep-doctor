@@ -220,3 +220,30 @@ test("changed-since scans only files introduced in newer commits", () => {
   assert.equal(changedReport.findings.some((finding) => finding.file === "src/new.js"), true);
   assert.equal(changedReport.config.changedSince, "HEAD~1");
 });
+
+test("release preset excludes secret-focused rules", () => {
+  const report = scanRepository(badRepo, { maxFiles: 100, preset: "release" });
+  const ids = new Set(report.findings.map((finding) => finding.id));
+
+  assert.equal(ids.has("generic-secret"), false);
+  assert.equal(ids.has("private-key-block"), false);
+  assert.equal(ids.has("aws-key"), false);
+  assert.equal(ids.has("console-call"), true);
+  assert.equal(report.config.preset, "release");
+});
+
+test("security preset focuses on security and excludes release-readiness rules", () => {
+  const report = scanRepository(badRepo, { maxFiles: 100, preset: "security" });
+  const ids = new Set(report.findings.map((finding) => finding.id));
+
+  assert.equal(ids.has("generic-secret"), true);
+  assert.equal(ids.has("merge-marker"), true);
+  assert.equal(ids.has("console-call"), false);
+  assert.equal(ids.has("missing-build-script"), false);
+  assert.equal(ids.has("readme-install"), false);
+  assert.equal(report.config.preset, "security");
+});
+
+test("invalid preset is rejected", () => {
+  assert.throws(() => scanRepository(badRepo, { preset: "unknown-preset" }), /Invalid preset/i);
+});

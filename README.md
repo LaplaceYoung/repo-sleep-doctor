@@ -47,6 +47,9 @@ npm run scan:junit
 
 # only scan files changed since main
 node src/cli.js . --changed-since main --fail-on p1
+
+# run with built-in preset (release-focused rules)
+node src/cli.js . --preset release --fail-on p1
 ```
 
 ## CLI Usage
@@ -60,6 +63,7 @@ Options:
 - `--format <text|json|markdown|sarif|html|junit>` output format, default `text`
 - `--out <file>` write formatted output to file
 - `--config <file>` use a custom config file path
+- `--preset <all|release|security>` use built-in rule presets
 - `--max-files <number>` cap total scanned files
 - `--changed-since <git-ref>` only scan files changed since the given git ref
 - `--fail-on <none|p0|p1|p2>` set process exit threshold, default `p0`
@@ -87,6 +91,7 @@ Create `.repo-sleep-doctor.json` in repository root:
   "ignoreDirs": [".git", "node_modules", "dist"],
   "ignorePatterns": ["**/*.min.js", "**/*.map"],
   "useGitIgnore": true,
+  "preset": "release",
   "additionalIgnoreFiles": [".repo-sleep-doctorignore"],
   "textExtensions": [".js", ".ts", ".tsx", ".md"],
   "maxFileSizeMb": 1,
@@ -99,6 +104,11 @@ Create `.repo-sleep-doctor.json` in repository root:
   }
 }
 ```
+
+Preset notes:
+- `all`: enable all built-in rules (default behavior)
+- `release`: focus on release-readiness and quality rules, disable secret-only checks
+- `security`: focus on security/secret exposure checks, disable release-readiness rules
 
 Rule IDs currently exposed include (details in [`docs/rules.md`](docs/rules.md)):
 - `merge-marker`
