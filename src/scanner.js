@@ -148,9 +148,10 @@ function scanRepository(targetPath, cliOptions = {}) {
     ? collectedFiles.filter((file) => changedPaths.has(toPosixPath(file.relPath)))
     : collectedFiles;
 
-  const findings = runChecks(rootPath, files, config, {
+  const checkResult = runChecks(rootPath, files, config, {
     skipGlobalChecks: Boolean(changedSince)
-  }).sort(compareFindings);
+  });
+  const findings = (checkResult.findings || []).sort(compareFindings);
   const summary = summarizeFindings(findings);
   const score = calculateScore(summary);
 
@@ -172,6 +173,7 @@ function scanRepository(targetPath, cliOptions = {}) {
       preset: config.preset || null,
       changedSince
     },
+    analysis: checkResult.analysis || null,
     findings
   };
 }

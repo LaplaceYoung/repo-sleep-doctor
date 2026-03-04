@@ -16,6 +16,8 @@ Language: [English](README.md) | 简体中文
 - `package.json` 缺少 `build/test/lint` 脚本
 - 缺少测试文件
 - 超大文件
+- 交互式 HTML 仪表盘（严重级别/规则分布/热点文件）
+- 快速路径启发式扫描（低信号文件跳过逐行解析，加速运行）
 
 ## 安装
 

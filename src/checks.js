@@ -3,6 +3,13 @@ const path = require("path");
 
 const MERGE_MARKER_RE = /^(<{7}|={7}|>{7})/;
 const TODO_RE = /\b(TODO|FIXME|HACK|XXX)\b/i;
+const README_INSTALL_RE = /^#{1,3}\s*(installation|install)\b/im;
+const README_USAGE_RE = /^#{1,3}\s*(usage|quick start|get started)\b/im;
+
+const MERGE_HINTS = ["<<<<<<<", "=======", ">>>>>>>"];
+const SECRET_HINTS = ["PRIVATE KEY", "AKIA", "API_KEY", "API-KEY", "SECRET", "TOKEN", "PASSWORD"];
+const DEBUG_HINTS = ["console.", "debugger", "print("];
+const TODO_HINTS = ["TODO", "FIXME", "HACK", "XXX"];
 
 const SECRET_RULES = [
   {
@@ -133,6 +140,15 @@ function tryReadTextFile(absPath) {
   }
 }
 
+function hasAnyNeedle(haystack, needles) {
+  for (const needle of needles) {
+    if (haystack.includes(needle)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function runChecks(rootPath, files, config, scanOptions = {}) {
   const findings = [];
   const ruleCounts = new Map();
@@ -149,6 +165,12 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
   let rootReadme = null;
   let rootPackage = null;
   let codeFileCount = 0;
+  const analysis = {
+    textCandidates: 0,
+    textFilesRead: 0,
+    lineScanSkippedFiles: 0,
+    linesScanned: 0
+  };
 
   for (const file of files) {
     if (isTestFile(file.relPath)) {
@@ -168,18 +190,21 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
     }
 
     const ext = (file.ext || "").toLowerCase();
-    if (CODE_EXTENSIONS.has(ext)) {
+    const isCodeFile = CODE_EXTENSIONS.has(ext);
+    if (isCodeFile) {
       codeFileCount += 1;
     }
 
     if (!isTextCandidate(file, textExtensions) || file.sizeBytes > maxTextBytes) {
       continue;
     }
+    analysis.textCandidates += 1;
 
     const content = tryReadTextFile(file.absPath);
     if (content === null) {
       continue;
     }
+    analysis.textFilesRead += 1;
 
     if (file.relPath.toLowerCase() === "readme.md") {
       rootReadme = content;
@@ -188,13 +213,26 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
       rootPackage = content;
     }
 
+    const upperContent = content.toUpperCase();
+    const lowerContent = isCodeFile ? content.toLowerCase() : "";
+    const hasMergeHints = hasAnyNeedle(upperContent, MERGE_HINTS);
+    const hasSecretHints = hasAnyNeedle(upperContent, SECRET_HINTS);
+    const hasDebugHints = isCodeFile && hasAnyNeedle(lowerContent, DEBUG_HINTS);
+    const hasTodoHints = isCodeFile && hasAnyNeedle(upperContent, TODO_HINTS);
+    const needsLineScan = hasMergeHints || hasSecretHints || hasDebugHints || hasTodoHints;
+    if (!needsLineScan) {
+      analysis.lineScanSkippedFiles += 1;
+      continue;
+    }
+
     const lines = content.split(/\r?\n/);
+    analysis.linesScanned += lines.length;
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index];
       const lineNumber = index + 1;
       const trimmed = line.trim();
 
-      if (MERGE_MARKER_RE.test(trimmed)) {
+      if (hasMergeHints && MERGE_MARKER_RE.test(trimmed)) {
         pushFinding(findings, ruleCounts, context, {
           id: "merge-marker",
           severity: "p0",
@@ -206,21 +244,23 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
         });
       }
 
-      for (const secretRule of SECRET_RULES) {
-        if (secretRule.test(line)) {
-          pushFinding(findings, ruleCounts, context, {
-            id: secretRule.id,
-            severity: "p0",
-            title: "Potential secret exposure",
-            file: file.relPath,
-            line: lineNumber,
-            message: secretRule.message,
-            suggestion: "Rotate the secret and move it to environment configuration."
-          });
+      if (hasSecretHints) {
+        for (const secretRule of SECRET_RULES) {
+          if (secretRule.test(line)) {
+            pushFinding(findings, ruleCounts, context, {
+              id: secretRule.id,
+              severity: "p0",
+              title: "Potential secret exposure",
+              file: file.relPath,
+              line: lineNumber,
+              message: secretRule.message,
+              suggestion: "Rotate the secret and move it to environment configuration."
+            });
+          }
         }
       }
 
-      if (isCodeLikeFile(file)) {
+      if (hasDebugHints) {
         for (const debugRule of DEBUG_RULES) {
           if (debugRule.test(line)) {
             pushFinding(findings, ruleCounts, context, {
@@ -236,7 +276,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
         }
       }
 
-      if (isCodeLikeFile(file) && TODO_RE.test(line) && isCommentLikeTodo(line)) {
+      if (hasTodoHints && TODO_RE.test(line) && isCommentLikeTodo(line)) {
         pushFinding(findings, ruleCounts, context, {
           id: "todo-comment",
           severity: "p2",
@@ -261,7 +301,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
       suggestion: "Add a README with install and usage instructions."
     });
   } else if (!scanOptions.skipGlobalChecks) {
-    if (!/^#{1,3}\s*(installation|install)\b/im.test(rootReadme)) {
+    if (!README_INSTALL_RE.test(rootReadme)) {
       pushFinding(findings, ruleCounts, context, {
         id: "readme-install",
         severity: "p2",
@@ -272,7 +312,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
         suggestion: "Add an Installation section with exact setup commands."
       });
     }
-    if (!/^#{1,3}\s*(usage|quick start|get started)\b/im.test(rootReadme)) {
+    if (!README_USAGE_RE.test(rootReadme)) {
       pushFinding(findings, ruleCounts, context, {
         id: "readme-usage",
         severity: "p2",
@@ -347,7 +387,10 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
     });
   }
 
-  return findings;
+  return {
+    findings,
+    analysis
+  };
 }
 
 module.exports = {

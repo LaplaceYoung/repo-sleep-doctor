@@ -20,6 +20,8 @@ The scanner detects practical release blockers:
 - missing `build/test/lint` scripts in `package.json`
 - missing test files
 - oversized files
+- interactive HTML dashboard with severity/rule/file hotspot views
+- fast-path heuristics that skip expensive line scans for low-signal files
 
 ## Installation
 

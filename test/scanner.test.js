@@ -6,7 +6,7 @@ const path = require("path");
 const { execFileSync, spawnSync } = require("child_process");
 
 const { compareWithBaseline, createOnlyNewReport, loadBaseline } = require("../src/baseline");
-const { formatSarif, formatMarkdown, formatJunit, shouldFail } = require("../src/reporters");
+const { formatSarif, formatMarkdown, formatJunit, formatHtml, shouldFail } = require("../src/reporters");
 const { scanRepository } = require("../src/scanner");
 
 const badRepo = path.join(__dirname, "fixtures", "bad-repo");
@@ -29,6 +29,16 @@ test("scanRepository keeps good fixture mostly clean", () => {
 
   assert.equal(report.summary.p0, 0, "Expected zero P0 findings");
   assert.ok(report.score >= 90, "Expected high score for clean repository");
+});
+
+test("scanRepository exposes analysis stats for performance visibility", () => {
+  const report = scanRepository(goodRepo, { maxFiles: 100 });
+  assert.equal(typeof report.analysis, "object");
+  assert.equal(typeof report.analysis.textCandidates, "number");
+  assert.equal(typeof report.analysis.textFilesRead, "number");
+  assert.equal(typeof report.analysis.lineScanSkippedFiles, "number");
+  assert.equal(typeof report.analysis.linesScanned, "number");
+  assert.ok(report.analysis.textCandidates >= report.analysis.textFilesRead);
 });
 
 test("shouldFail honors severity threshold", () => {
@@ -125,6 +135,15 @@ test("formatJunit returns valid junit-like xml payload", () => {
   assert.match(xml, /<testsuite name="repo-sleep-doctor"/);
   assert.match(xml, /<testcase /);
   assert.match(xml, /<failure /);
+});
+
+test("formatHtml contains dashboard panels and filter controls", () => {
+  const report = scanRepository(badRepo, { maxFiles: 100 });
+  const html = formatHtml(report);
+  assert.match(html, /Top Rules/);
+  assert.match(html, /Hotspot Files/);
+  assert.match(html, /data-filter="p0"/);
+  assert.match(html, /finding-search/);
 });
 
 test("formatMarkdown escapes table-breaking characters", () => {

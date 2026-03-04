@@ -65,6 +65,11 @@ function formatText(report) {
   lines.push(
     `Findings: P0=${report.summary.p0} P1=${report.summary.p1} P2=${report.summary.p2} | Score=${report.score}/100`
   );
+  if (report.analysis) {
+    lines.push(
+      `Analysis: textCandidates=${report.analysis.textCandidates} textRead=${report.analysis.textFilesRead} lineScanSkipped=${report.analysis.lineScanSkippedFiles} linesScanned=${report.analysis.linesScanned}`
+    );
+  }
 
   if (report.configPath) {
     lines.push(`Config: ${report.configPath}`);
@@ -119,6 +124,11 @@ function formatMarkdown(report) {
   }
   lines.push(`- Score: \`${report.score}/100\``);
   lines.push(`- Findings: \`P0=${report.summary.p0} P1=${report.summary.p1} P2=${report.summary.p2}\``);
+  if (report.analysis) {
+    lines.push(
+      `- Analysis: \`textCandidates=${report.analysis.textCandidates} textRead=${report.analysis.textFilesRead} lineScanSkipped=${report.analysis.lineScanSkippedFiles} linesScanned=${report.analysis.linesScanned}\``
+    );
+  }
 
   if (report.baseline) {
     lines.push(`- Baseline: \`${report.baseline.baselinePath}\``);
@@ -332,13 +342,61 @@ function formatHtml(report) {
     </div>`
     : "";
 
+  const analysisBlock = report.analysis
+    ? `<div class="analysis">
+      <strong>Fast Path:</strong> textCandidates=${report.analysis.textCandidates}, textRead=${report.analysis.textFilesRead}, lineScanSkipped=${report.analysis.lineScanSkippedFiles}, linesScanned=${report.analysis.linesScanned}
+    </div>`
+    : "";
+
+  const total = Math.max(report.summary.total || report.findings.length, 1);
+  const p0Pct = ((report.summary.p0 / total) * 100).toFixed(2);
+  const p1Pct = ((report.summary.p1 / total) * 100).toFixed(2);
+  const donut = `conic-gradient(#d14b3b 0 ${p0Pct}%, #d98a00 ${p0Pct}% ${Number(p0Pct) + Number(p1Pct)}%, #4f84c9 ${Number(p0Pct) + Number(p1Pct)}% 100%)`;
+
+  const byRule = new Map();
+  const byFile = new Map();
+  for (const finding of report.findings) {
+    byRule.set(finding.id, (byRule.get(finding.id) || 0) + 1);
+    const fileKey = finding.file || "(global)";
+    byFile.set(fileKey, (byFile.get(fileKey) || 0) + 1);
+  }
+  const topRules = Array.from(byRule.entries())
+    .map(([id, count]) => ({ id, count }))
+    .sort((a, b) => b.count - a.count || a.id.localeCompare(b.id))
+    .slice(0, 8);
+  const topFiles = Array.from(byFile.entries())
+    .map(([file, count]) => ({ file, count }))
+    .sort((a, b) => b.count - a.count || a.file.localeCompare(b.file))
+    .slice(0, 8);
+  const topRuleMax = topRules.length > 0 ? topRules[0].count : 1;
+
+  const ruleBars =
+    topRules.length === 0
+      ? `<div class="empty">No rule distribution available.</div>`
+      : topRules
+          .map(
+            (item) => `<div class="bar-row">
+              <div class="bar-label">${escapeHtml(item.id)}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${Math.max(8, Math.round((item.count / topRuleMax) * 100))}%"></div></div>
+              <div class="bar-value">${item.count}</div>
+            </div>`
+          )
+          .join("");
+
+  const hotspotRows =
+    topFiles.length === 0
+      ? `<tr><td colspan="2">No hotspots.</td></tr>`
+      : topFiles
+          .map((item) => `<tr><td>${escapeHtml(item.file)}</td><td>${item.count}</td></tr>`)
+          .join("");
+
   const rows =
     report.findings.length === 0
       ? `<tr><td colspan="5">No findings detected.</td></tr>`
       : report.findings
           .map(
             (finding) => `
-    <tr>
+    <tr data-sev="${escapeHtml(finding.severity)}">
       <td><span class="${severityChipClass(finding.severity)}">${finding.severity.toUpperCase()}</span></td>
       <td>${escapeHtml(finding.id)}</td>
       <td>${escapeHtml(finding.title)}</td>
@@ -357,9 +415,9 @@ function formatHtml(report) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Repo Sleep Doctor Report</title>
   <style>
-    :root { --bg: #f2f7fb; --fg: #123; --card: #fff; --accent: #145a7a; --muted: #6b7785; --border: #d6e1ea; }
+    :root { --bg: #f2f7fb; --fg: #123; --card: #fff; --accent: #145a7a; --muted: #6b7785; --border: #d6e1ea; --p0:#d14b3b; --p1:#d98a00; --p2:#4f84c9; }
     body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: var(--fg); background: radial-gradient(circle at 0 0, #d8eefb, transparent 45%), var(--bg); }
-    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px 32px; }
+    .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px 32px; }
     .hero { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(9, 33, 52, 0.08); }
     h1 { margin: 0 0 8px; color: var(--accent); font-size: 28px; }
     .meta { color: var(--muted); font-size: 13px; line-height: 1.6; }
@@ -367,44 +425,86 @@ function formatHtml(report) {
     .metric { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: #fafdff; }
     .metric .label { font-size: 12px; color: var(--muted); text-transform: uppercase; }
     .metric .value { font-size: 24px; font-weight: 700; margin-top: 4px; color: var(--accent); }
-    .comparison { margin-top: 12px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 10px; background: #f9fcff; font-size: 13px; color: #365066; }
-    .table-wrap { margin-top: 18px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .comparison, .analysis { margin-top: 12px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 10px; background: #f9fcff; font-size: 13px; color: #365066; }
+    .panels { margin-top: 18px; display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 14px; }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+    .panel h2 { margin: 0 0 10px; font-size: 15px; color: #24455f; }
+    .donut-wrap { display: flex; gap: 16px; align-items: center; }
+    .donut { width: 140px; height: 140px; border-radius: 50%; background: ${donut}; position: relative; }
+    .donut::after { content: ""; position: absolute; inset: 18px; background: white; border-radius: 50%; box-shadow: inset 0 0 0 1px #e6eef5; }
+    .legend { font-size: 13px; color: #425a70; line-height: 1.8; }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 999px; margin-right: 6px; }
+    .dot-p0 { background: var(--p0); } .dot-p1 { background: var(--p1); } .dot-p2 { background: var(--p2); }
+    .bar-row { display: grid; grid-template-columns: 120px 1fr 36px; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .bar-label { font-size: 12px; color: #345; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-track { background: #edf3f8; height: 10px; border-radius: 999px; overflow: hidden; }
+    .bar-fill { background: linear-gradient(90deg, #4f84c9, #145a7a); height: 100%; border-radius: 999px; }
+    .bar-value { font-size: 12px; color: #456; text-align: right; }
+    .hotspots table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .hotspots th, .hotspots td { border-bottom: 1px solid #edf3f8; text-align: left; padding: 8px 4px; }
+    .hotspots tr:last-child td { border-bottom: 0; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; align-items: center; }
+    .pill { border: 1px solid var(--border); background: #fff; color: #2c4f67; border-radius: 999px; padding: 6px 11px; font-size: 12px; cursor: pointer; }
+    .pill.active { background: #e7f1f8; border-color: #b6d2e3; font-weight: 600; }
+    .search { margin-left: auto; min-width: 220px; max-width: 320px; width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+    .table-wrap { margin-top: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 11px 12px; border-bottom: 1px solid #ebf1f6; vertical-align: top; text-align: left; font-size: 13px; }
     th { background: #f7fbff; color: #345; font-weight: 700; }
     tr:last-child td { border-bottom: 0; }
     .sev { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 700; color: white; }
-    .sev-p0 { background: #d14b3b; }
-    .sev-p1 { background: #d98a00; }
-    .sev-p2 { background: #4f84c9; }
+    .sev-p0 { background: var(--p0); } .sev-p1 { background: var(--p1); } .sev-p2 { background: var(--p2); }
     .suggestion { margin-top: 6px; color: #4e647a; }
-    @media (max-width: 740px) {
-      .metrics { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
-      th:nth-child(2), td:nth-child(2) { display: none; }
-    }
+    .empty { color: #668097; font-size: 13px; padding: 8px 0; }
+    @media (max-width: 980px) { .panels { grid-template-columns: 1fr; } .search { margin-left: 0; max-width: none; } }
+    @media (max-width: 740px) { .metrics { grid-template-columns: repeat(2, minmax(120px, 1fr)); } th:nth-child(2), td:nth-child(2) { display: none; } }
   </style>
 </head>
 <body>
   <div class="wrap">
     <section class="hero">
       <h1>Repo Sleep Doctor</h1>
-        <div class="meta">
-          <div><strong>Target:</strong> ${escapeHtml(report.rootPath)}</div>
-          <div><strong>Scanned:</strong> ${escapeHtml(report.scannedAt)}</div>
-          <div><strong>Duration:</strong> ${escapeHtml(formatDuration(report.durationMs))} | <strong>Files:</strong> ${report.fileCount}</div>
-          ${
-            report.config && report.config.preset
-              ? `<div><strong>Preset:</strong> ${escapeHtml(report.config.preset)}</div>`
-              : ""
-          }
-          ${
-            report.config && report.config.changedSince
-              ? `<div><strong>Changed since:</strong> ${escapeHtml(report.config.changedSince)}</div>`
-              : ""
-          }
-        </div>
+      <div class="meta">
+        <div><strong>Target:</strong> ${escapeHtml(report.rootPath)}</div>
+        <div><strong>Scanned:</strong> ${escapeHtml(report.scannedAt)}</div>
+        <div><strong>Duration:</strong> ${escapeHtml(formatDuration(report.durationMs))} | <strong>Files:</strong> ${report.fileCount}</div>
+        ${report.config && report.config.preset ? `<div><strong>Preset:</strong> ${escapeHtml(report.config.preset)}</div>` : ""}
+        ${report.config && report.config.changedSince ? `<div><strong>Changed since:</strong> ${escapeHtml(report.config.changedSince)}</div>` : ""}
+      </div>
       <div class="metrics">${summaryBlocks}</div>
       ${comparisonBlock}
+      ${analysisBlock}
+    </section>
+    <section class="panels">
+      <article class="panel">
+        <h2>Severity Mix</h2>
+        <div class="donut-wrap">
+          <div class="donut" aria-label="severity distribution"></div>
+          <div class="legend">
+            <div><span class="dot dot-p0"></span>P0: ${report.summary.p0}</div>
+            <div><span class="dot dot-p1"></span>P1: ${report.summary.p1}</div>
+            <div><span class="dot dot-p2"></span>P2: ${report.summary.p2}</div>
+          </div>
+        </div>
+      </article>
+      <article class="panel">
+        <h2>Top Rules</h2>
+        ${ruleBars}
+      </article>
+      <article class="panel hotspots">
+        <h2>Hotspot Files</h2>
+        <table>
+          <thead><tr><th>File</th><th>Findings</th></tr></thead>
+          <tbody>${hotspotRows}</tbody>
+        </table>
+      </article>
+    </section>
+    <section class="controls">
+      <button class="pill active" data-filter="all">All</button>
+      <button class="pill" data-filter="p0">P0</button>
+      <button class="pill" data-filter="p1">P1</button>
+      <button class="pill" data-filter="p2">P2</button>
+      <input id="finding-search" class="search" placeholder="Search rule / file / message..." />
     </section>
     <section class="table-wrap">
       <table>
@@ -417,10 +517,39 @@ function formatHtml(report) {
             <th>Message</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody id="findings-body">${rows}</tbody>
       </table>
     </section>
   </div>
+  <script>
+    (function() {
+      const buttons = Array.from(document.querySelectorAll("[data-filter]"));
+      const rows = Array.from(document.querySelectorAll("#findings-body tr[data-sev]"));
+      const searchInput = document.getElementById("finding-search");
+      let activeFilter = "all";
+
+      function applyFilters() {
+        const keyword = (searchInput.value || "").toLowerCase().trim();
+        for (const row of rows) {
+          const sev = row.getAttribute("data-sev");
+          const matchSeverity = activeFilter === "all" || sev === activeFilter;
+          const matchKeyword = !keyword || row.textContent.toLowerCase().includes(keyword);
+          row.style.display = matchSeverity && matchKeyword ? "" : "none";
+        }
+      }
+
+      for (const button of buttons) {
+        button.addEventListener("click", function() {
+          activeFilter = button.getAttribute("data-filter");
+          for (const b of buttons) b.classList.toggle("active", b === button);
+          applyFilters();
+        });
+      }
+
+      searchInput.addEventListener("input", applyFilters);
+      applyFilters();
+    })();
+  </script>
 </body>
 </html>`;
 }
