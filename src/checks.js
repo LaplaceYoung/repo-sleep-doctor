@@ -152,11 +152,25 @@ function hasAnyNeedle(haystack, needles) {
 function runChecks(rootPath, files, config, scanOptions = {}) {
   const findings = [];
   const ruleCounts = new Map();
+  const disabledRules = new Set((config.disabledRules || []).map((rule) => String(rule || "").trim()));
   const context = {
-    disabledRules: new Set((config.disabledRules || []).map((rule) => String(rule || "").trim())),
+    disabledRules,
     severityOverrides: config.severityOverrides || {},
     maxFindingsPerRule: config.maxFindingsPerRule
   };
+  const mergeEnabled = !disabledRules.has("merge-marker");
+  const largeFileEnabled = !disabledRules.has("large-file");
+  const todoEnabled = !disabledRules.has("todo-comment");
+  const missingReadmeEnabled = !disabledRules.has("missing-readme");
+  const readmeInstallEnabled = !disabledRules.has("readme-install");
+  const readmeUsageEnabled = !disabledRules.has("readme-usage");
+  const missingBuildEnabled = !disabledRules.has("missing-build-script");
+  const missingTestScriptEnabled = !disabledRules.has("missing-test-script");
+  const missingLintEnabled = !disabledRules.has("missing-lint-script");
+  const invalidPackageEnabled = !disabledRules.has("invalid-package-json");
+  const missingTestsEnabled = !disabledRules.has("missing-tests");
+  const activeSecretRules = SECRET_RULES.filter((rule) => !disabledRules.has(rule.id));
+  const activeDebugRules = DEBUG_RULES.filter((rule) => !disabledRules.has(rule.id));
   const textExtensions = new Set((config.textExtensions || []).map((ext) => ext.toLowerCase()));
   const largeFileLimit = Math.floor(config.maxFileSizeMb * 1024 * 1024);
   const maxTextBytes = Math.floor(config.maxTextFileSizeKb * 1024);
@@ -177,7 +191,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
       hasTests = true;
     }
 
-    if (file.sizeBytes > largeFileLimit) {
+    if (largeFileEnabled && file.sizeBytes > largeFileLimit) {
       pushFinding(findings, ruleCounts, context, {
         id: "large-file",
         severity: "p1",
@@ -215,10 +229,10 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
 
     const upperContent = content.toUpperCase();
     const lowerContent = isCodeFile ? content.toLowerCase() : "";
-    const hasMergeHints = hasAnyNeedle(upperContent, MERGE_HINTS);
-    const hasSecretHints = hasAnyNeedle(upperContent, SECRET_HINTS);
-    const hasDebugHints = isCodeFile && hasAnyNeedle(lowerContent, DEBUG_HINTS);
-    const hasTodoHints = isCodeFile && hasAnyNeedle(upperContent, TODO_HINTS);
+    const hasMergeHints = mergeEnabled && hasAnyNeedle(upperContent, MERGE_HINTS);
+    const hasSecretHints = activeSecretRules.length > 0 && hasAnyNeedle(upperContent, SECRET_HINTS);
+    const hasDebugHints = isCodeFile && activeDebugRules.length > 0 && hasAnyNeedle(lowerContent, DEBUG_HINTS);
+    const hasTodoHints = isCodeFile && todoEnabled && hasAnyNeedle(upperContent, TODO_HINTS);
     const needsLineScan = hasMergeHints || hasSecretHints || hasDebugHints || hasTodoHints;
     if (!needsLineScan) {
       analysis.lineScanSkippedFiles += 1;
@@ -245,7 +259,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
       }
 
       if (hasSecretHints) {
-        for (const secretRule of SECRET_RULES) {
+        for (const secretRule of activeSecretRules) {
           if (secretRule.test(line)) {
             pushFinding(findings, ruleCounts, context, {
               id: secretRule.id,
@@ -261,7 +275,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
       }
 
       if (hasDebugHints) {
-        for (const debugRule of DEBUG_RULES) {
+        for (const debugRule of activeDebugRules) {
           if (debugRule.test(line)) {
             pushFinding(findings, ruleCounts, context, {
               id: debugRule.id,
@@ -290,7 +304,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
     }
   }
 
-  if (!scanOptions.skipGlobalChecks && !rootReadme) {
+  if (!scanOptions.skipGlobalChecks && missingReadmeEnabled && !rootReadme) {
     pushFinding(findings, ruleCounts, context, {
       id: "missing-readme",
       severity: "p1",
@@ -300,8 +314,8 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
       message: "No root README file found.",
       suggestion: "Add a README with install and usage instructions."
     });
-  } else if (!scanOptions.skipGlobalChecks) {
-    if (!README_INSTALL_RE.test(rootReadme)) {
+  } else if (!scanOptions.skipGlobalChecks && rootReadme) {
+    if (readmeInstallEnabled && !README_INSTALL_RE.test(rootReadme)) {
       pushFinding(findings, ruleCounts, context, {
         id: "readme-install",
         severity: "p2",
@@ -312,7 +326,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
         suggestion: "Add an Installation section with exact setup commands."
       });
     }
-    if (!README_USAGE_RE.test(rootReadme)) {
+    if (readmeUsageEnabled && !README_USAGE_RE.test(rootReadme)) {
       pushFinding(findings, ruleCounts, context, {
         id: "readme-usage",
         severity: "p2",
@@ -329,7 +343,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
     try {
       const parsed = JSON.parse(rootPackage);
       const scripts = parsed.scripts || {};
-      if (!scripts.build) {
+      if (missingBuildEnabled && !scripts.build) {
         pushFinding(findings, ruleCounts, context, {
           id: "missing-build-script",
           severity: "p2",
@@ -340,7 +354,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
           suggestion: "Add a deterministic build command under scripts.build."
         });
       }
-      if (!scripts.test) {
+      if (missingTestScriptEnabled && !scripts.test) {
         pushFinding(findings, ruleCounts, context, {
           id: "missing-test-script",
           severity: "p1",
@@ -351,7 +365,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
           suggestion: "Add scripts.test and wire it to your test runner."
         });
       }
-      if (!scripts.lint) {
+      if (missingLintEnabled && !scripts.lint) {
         pushFinding(findings, ruleCounts, context, {
           id: "missing-lint-script",
           severity: "p2",
@@ -363,19 +377,21 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
         });
       }
     } catch (_error) {
-      pushFinding(findings, ruleCounts, context, {
-        id: "invalid-package-json",
-        severity: "p1",
-        title: "package.json parse error",
-        file: "package.json",
-        line: 1,
-        message: "package.json exists but cannot be parsed as JSON.",
-        suggestion: "Fix JSON syntax errors in package.json."
-      });
+      if (invalidPackageEnabled) {
+        pushFinding(findings, ruleCounts, context, {
+          id: "invalid-package-json",
+          severity: "p1",
+          title: "package.json parse error",
+          file: "package.json",
+          line: 1,
+          message: "package.json exists but cannot be parsed as JSON.",
+          suggestion: "Fix JSON syntax errors in package.json."
+        });
+      }
     }
   }
 
-  if (!scanOptions.skipGlobalChecks && !hasTests && codeFileCount > 0) {
+  if (!scanOptions.skipGlobalChecks && missingTestsEnabled && !hasTests && codeFileCount > 0) {
     pushFinding(findings, ruleCounts, context, {
       id: "missing-tests",
       severity: codeFileCount > 10 ? "p1" : "p2",
