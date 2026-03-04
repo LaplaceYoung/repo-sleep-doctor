@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Repo Sleep Doctor | 同类仓库能力对照</title>
+  <title>Repo Sleep Doctor | 用法与核心竞争力</title>
   <meta
     name="description"
-    content="对照 Gitleaks、Trivy、Semgrep、markdownlint、todos 的公开能力，定义 Repo Sleep Doctor 的裂变型能力路线。"
+    content="Repo Sleep Doctor 用法与优势主题页：覆盖单仓扫描、团队门禁、Fleet 治理的完整落地路径。"
   />
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./assets/styles.css" />
@@ -20,7 +20,7 @@
       </a>
       <nav class="nav-links" aria-label="主导航">
         <a class="nav-link" href="./index.html">首页</a>
-        <a class="nav-link" href="./competitive.html">同类对照</a>
+        <a class="nav-link" href="./competitive.html">用法优势</a>
         <a class="nav-link" href="./blueprint.html">增长蓝图</a>
         <a class="nav-link" href="../README.md">Docs</a>
       </nav>
@@ -28,144 +28,195 @@
   </header>
 
   <main class="container">
-    <section class="hero" data-reveal data-delay="30">
+    <section class="hero" data-reveal data-delay="20">
       <div class="hero-grid">
         <div>
           <div class="badge-row">
-            <span class="badge">Benchmark</span>
-            <span class="badge">Capability Diff</span>
-            <span class="badge">Product Positioning</span>
+            <span class="badge">How To Use</span>
+            <span class="badge">Core Competitiveness</span>
+            <span class="badge">Production Ready</span>
           </div>
-          <h1>同类仓库对照</h1>
+          <h1>不是“看报告”<br />而是“驱动行动”</h1>
           <p class="lead">
-            目标不是“做另一个扫描器”，而是吸收成熟仓库已经验证有效的分发与协作机制，
-            再结合 Fleet 数据视角形成可扩散的产品能力闭环。
+            这页聚焦 Repo Sleep Doctor 的实际用法和核心竞争力：从单仓扫描到组织级 Fleet 治理，
+            每一步都可以直接落地到日常开发、CI 门禁和管理层复盘。
           </p>
+          <div class="hero-actions">
+            <a class="btn primary" href="../README.md">查看完整参数</a>
+            <a class="btn secondary" href="./blueprint.html">查看增长蓝图</a>
+          </div>
         </div>
-        <aside class="stat-panel">
-          <h2 class="stat-title">对照方法</h2>
+        <aside class="stat-panel usage-panel">
+          <h2 class="stat-title">3 个核心结果</h2>
           <ul class="stat-list">
-            <li class="stat-item"><span>信号来源</span><strong class="mono">官方 README</strong></li>
-            <li class="stat-item"><span>评估维度</span><strong class="mono">集成 / 输出 / 扩散</strong></li>
-            <li class="stat-item"><span>策略类型</span><strong class="mono">Adopt / Extend / Differentiate</strong></li>
-            <li class="stat-item"><span>落地产物</span><strong class="mono">Pages + CLI + CI</strong></li>
+            <li class="stat-item"><span>风险识别速度</span><strong class="mono">&lt; 5 min / repo</strong></li>
+            <li class="stat-item"><span>团队门禁统一</span><strong class="mono">Preset + Fail-On</strong></li>
+            <li class="stat-item"><span>组织可见性</span><strong class="mono">Fleet + Telemetry</strong></li>
           </ul>
+          <div class="pulse-orb" aria-hidden="true"></div>
         </aside>
       </div>
     </section>
 
-    <section class="section" data-reveal data-delay="70">
+    <section class="section" data-reveal data-delay="60">
       <div class="section-head">
-        <h2 class="section-title">能力矩阵</h2>
-        <p class="section-subtitle">同类信号 -> 我们要继承什么 -> 我们怎么放大</p>
+        <h2 class="section-title">三步落地路径</h2>
+        <p class="section-subtitle">今天接入，今天出结果</p>
       </div>
-      <table class="matrix">
-        <thead>
-          <tr>
-            <th>同类仓库信号</th>
-            <th>我们继承</th>
-            <th>我们放大</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>
-              <strong>Gitleaks</strong>：强调 pre-commit、CI 与 SARIF 扫描落地。<br />
-              <a class="repo-link" href="https://github.com/gitleaks/gitleaks" target="_blank" rel="noreferrer">github.com/gitleaks/gitleaks</a>
-            </td>
-            <td>继续强化 `--format sarif` 与门禁阈值（`--fail-on`）。</td>
-            <td>把扫描阈值策略升级为“团队模板包”，降低跨仓复制成本。</td>
-          </tr>
-          <tr>
-            <td>
-              <strong>Trivy</strong>：主打“开发者优先”并覆盖多平台集成。<br />
-              <a class="repo-link" href="https://github.com/aquasecurity/trivy" target="_blank" rel="noreferrer">github.com/aquasecurity/trivy</a>
-            </td>
-            <td>坚持 CLI-first + 多格式输出。</td>
-            <td>把 Fleet 报告和执行遥测做成可分享页面，进入管理层汇报链路。</td>
-          </tr>
-          <tr>
-            <td>
-              <strong>Semgrep</strong>：强调可扩展规则与工作流整合。<br />
-              <a class="repo-link" href="https://github.com/semgrep/semgrep" target="_blank" rel="noreferrer">github.com/semgrep/semgrep</a>
-            </td>
-            <td>延展 preset 与规则体系表达。</td>
-            <td>上线“规则包市场化文案页面”，让外部团队能快速理解并复用。</td>
-          </tr>
-          <tr>
-            <td>
-              <strong>markdownlint</strong>：规则驱动、文档化完整。<br />
-              <a class="repo-link" href="https://github.com/DavidAnson/markdownlint" target="_blank" rel="noreferrer">github.com/DavidAnson/markdownlint</a>
-            </td>
-            <td>保持 `docs/rules.md` 的可维护性。</td>
-            <td>把规则解释转成“业务场景话术”，增强产品销售/面试叙事能力。</td>
-          </tr>
-          <tr>
-            <td>
-              <strong>todos</strong>：支持 json/csv/text/table 输出。<br />
-              <a class="repo-link" href="https://github.com/ianlewis/todos" target="_blank" rel="noreferrer">github.com/ianlewis/todos</a>
-            </td>
-            <td>保留多格式输出兼容能力。</td>
-            <td>新增“导出仓库清单 + Fleet 批处理”编排，形成运营流程标准件。</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section class="section" data-reveal data-delay="110">
-      <div class="section-head">
-        <h2 class="section-title">能力裂变路线</h2>
-        <p class="section-subtitle">Adopt -> Extend -> Differentiate</p>
-      </div>
-      <div class="timeline">
-        <article class="timeline-item">
-          <div class="timeline-tag">ADOPT</div>
-          <div>
-            <h3>接入层标准化</h3>
-            <p>对齐同类项目的 CI / pre-commit / SARIF 常规接入姿势，确保上手路径一致、学习成本可预期。</p>
-          </div>
+      <div class="usage-steps">
+        <article class="step-card">
+          <div class="step-number">01</div>
+          <h3>单仓扫描</h3>
+          <p>先拿到首份风险报告，快速确认当前仓库上线前风险面。</p>
         </article>
-        <article class="timeline-item">
-          <div class="timeline-tag">EXTEND</div>
-          <div>
-            <h3>Fleet 组织视角</h3>
-            <p>在单仓扫描之上叠加多仓执行遥测、历史趋势和风险优先级，给出治理动作而不只是检测结果。</p>
-          </div>
+        <article class="step-card">
+          <div class="step-number">02</div>
+          <h3>团队门禁</h3>
+          <p>固定 preset 与 fail-on 阈值，把“质量标准”写入流水线。</p>
         </article>
-        <article class="timeline-item">
-          <div class="timeline-tag">DIFF</div>
-          <div>
-            <h3>增长型传播层</h3>
-            <p>把报告、模板、案例页面化，形成可被转发和复用的产品资产，推动团队内外自然扩散。</p>
-          </div>
+        <article class="step-card">
+          <div class="step-number">03</div>
+          <h3>Fleet 治理</h3>
+          <p>批量扫描多仓，输出趋势与执行遥测，形成管理动作闭环。</p>
         </article>
       </div>
     </section>
 
-    <section class="section" data-reveal data-delay="140">
+    <section class="section" data-reveal data-delay="90">
       <div class="section-head">
-        <h2 class="section-title">下一步产品化动作</h2>
-        <p class="section-subtitle">直接挂到 roadmap 的可执行项</p>
+        <h2 class="section-title">场景切换演示</h2>
+        <p class="section-subtitle">切换不同团队场景，查看推荐命令与收益</p>
       </div>
-      <div class="cards-3">
+      <div class="scene-tabs" role="tablist" aria-label="场景切换">
+        <button class="scene-btn active" data-tab-target="solo" type="button">个人开发</button>
+        <button class="scene-btn" data-tab-target="team" type="button">团队 CI</button>
+        <button class="scene-btn" data-tab-target="fleet" type="button">组织 Fleet</button>
+      </div>
+
+      <div class="scene-panel active" data-tab-panel="solo">
+        <div class="cards-2">
+          <article class="card">
+            <h3>推荐命令</h3>
+            <pre class="code-block">node src/cli.js . --format html --out reports/scan.html --fail-on p1</pre>
+          </article>
+          <article class="card">
+            <h3>直接收益</h3>
+            <p>快速识别 merge marker、潜在密钥、debug 残留，让提测前风险检查自动化。</p>
+          </article>
+        </div>
+      </div>
+
+      <div class="scene-panel" data-tab-panel="team">
+        <div class="cards-2">
+          <article class="card">
+            <h3>推荐命令</h3>
+            <pre class="code-block">node src/cli.js . --preset release --format sarif --out reports/scan.sarif --fail-on p1</pre>
+          </article>
+          <article class="card">
+            <h3>直接收益</h3>
+            <p>标准化团队门禁策略，减少“同一问题反复出现”的沟通和回归成本。</p>
+          </article>
+        </div>
+      </div>
+
+      <div class="scene-panel" data-tab-panel="fleet">
+        <div class="cards-2">
+          <article class="card">
+            <h3>推荐命令</h3>
+            <pre class="code-block">node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
+node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --format html --out reports/fleet.html --continue-on-error --fail-on p1</pre>
+          </article>
+          <article class="card">
+            <h3>直接收益</h3>
+            <p>统一多个仓库治理视角，追踪最慢仓、失败仓和风险热点，提升组织交付稳定性。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="120">
+      <div class="section-head">
+        <h2 class="section-title">核心竞争力</h2>
+        <p class="section-subtitle">不仅检测问题，更提供治理路径</p>
+      </div>
+      <div class="cards-2">
         <article class="card">
-          <h3>Rules Storybook</h3>
-          <p>为每条规则补“场景-风险-修复”三段式文案，变成对外可讲、对内可训的知识资产。</p>
+          <h3>能力维度</h3>
+          <div class="adv-list">
+            <div class="adv-item">
+              <div class="adv-row">
+                <span>门禁可控性</span><span class="mono">95%</span>
+              </div>
+              <div class="meter"><div class="meter-fill" data-progress="95"></div></div>
+            </div>
+            <div class="adv-item">
+              <div class="adv-row">
+                <span>多仓扩展性</span><span class="mono">92%</span>
+              </div>
+              <div class="meter"><div class="meter-fill" data-progress="92"></div></div>
+            </div>
+            <div class="adv-item">
+              <div class="adv-row">
+                <span>执行透明度</span><span class="mono">90%</span>
+              </div>
+              <div class="meter"><div class="meter-fill" data-progress="90"></div></div>
+            </div>
+            <div class="adv-item">
+              <div class="adv-row">
+                <span>接入速度</span><span class="mono">88%</span>
+              </div>
+              <div class="meter"><div class="meter-fill" data-progress="88"></div></div>
+            </div>
+          </div>
         </article>
         <article class="card">
-          <h3>Fleet Benchmark Pack</h3>
-          <p>把不同团队仓库的基线分层输出，形成季度对标挑战赛，驱动内部自传播。</p>
+          <h3>差异化价值</h3>
+          <div class="value-grid">
+            <div class="value-chip">
+              <strong>一体化</strong>
+              <span>扫描、历史、聚合、执行遥测在同一 CLI 体系内完成。</span>
+            </div>
+            <div class="value-chip">
+              <strong>可运营</strong>
+              <span>支持导出仓库清单与批量编排，天然适配周期性治理任务。</span>
+            </div>
+            <div class="value-chip">
+              <strong>可传播</strong>
+              <span>HTML 报告可直接用于周会复盘和跨团队协作沟通。</span>
+            </div>
+            <div class="value-chip">
+              <strong>可演进</strong>
+              <span>preset 与规则体系可持续扩展，适配不同团队成熟度。</span>
+            </div>
+          </div>
         </article>
-        <article class="card">
-          <h3>Shareable Exec Digest</h3>
-          <p>把执行遥测摘要做成可嵌入周报的模块，缩短“发现问题”到“推动决策”的链路。</p>
-        </article>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="150">
+      <div class="section-head">
+        <h2 class="section-title">FAQ 与执行建议</h2>
+        <p class="section-subtitle">常见问题直接给结论</p>
+      </div>
+      <div class="faq-grid">
+        <details open>
+          <summary>Q1: 首次接入建议从哪个阈值开始？</summary>
+          <p>建议先用 `--fail-on none` 采集基线，再过渡到 `p1`，最后根据团队成熟度收敛到 `p0` 或更严格策略。</p>
+        </details>
+        <details>
+          <summary>Q2: 多仓场景如何避免路径维护成本？</summary>
+          <p>使用 `--discover-root` + `--export-repos` 生成 `repos.txt`，将仓库发现与仓库扫描解耦，方便 CI 分阶段执行。</p>
+        </details>
+        <details>
+          <summary>Q3: 如何向管理层展示治理效果？</summary>
+          <p>建议固定输出 Fleet HTML 与 execution log，每周关注失败仓数量、恢复时间与高频规则趋势。</p>
+        </details>
       </div>
     </section>
 
     <footer class="foot">
       <span>© <span data-year></span> Repo Sleep Doctor</span>
-      <span>Competitive signals converted into product growth assets.</span>
+      <span>Usage-first product page for release risk execution.</span>
     </footer>
   </main>
 

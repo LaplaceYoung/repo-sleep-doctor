@@ -3,7 +3,7 @@
 This folder contains a static multi-page promo site:
 
 - `index.html`: growth-oriented product landing page
-- `competitive.html`: benchmark and capability-diff page
+- `competitive.html`: usage and core-competitiveness page
 - `blueprint.html`: fission growth blueprint page
 - `assets/`: shared styles and interactions
 

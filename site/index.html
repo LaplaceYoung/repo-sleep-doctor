@@ -6,7 +6,7 @@
   <title>Repo Sleep Doctor | Fleet 发布风险与增长引擎</title>
   <meta
     name="description"
-    content="Repo Sleep Doctor 宣传站：参考 Gitleaks、Trivy、Semgrep 等仓库实践，打造可裂变的发布风险治理产品能力。"
+    content="Repo Sleep Doctor 宣传站：面向工程团队的发布风险扫描、Fleet 汇总和执行遥测产品能力。"
   />
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./assets/styles.css" />
@@ -20,7 +20,7 @@
       </a>
       <nav class="nav-links" aria-label="主导航">
         <a class="nav-link" href="./index.html">首页</a>
-        <a class="nav-link" href="./competitive.html">同类对照</a>
+        <a class="nav-link" href="./competitive.html">用法优势</a>
         <a class="nav-link" href="./blueprint.html">增长蓝图</a>
         <a class="nav-link" href="../README.md">Docs</a>
       </nav>
@@ -38,20 +38,20 @@
           </div>
           <h1>把扫描工具<br />做成会自增长的产品</h1>
           <p class="lead">
-            Repo Sleep Doctor 不只给一份扫描报告，而是把多仓风险数据、执行遥测、模板化落地路径打包成增长资产。
-            参考同类仓库的成熟能力后，我们将产品定位升级为“发布稳定性增长引擎”。
+            Repo Sleep Doctor 不只输出一份扫描结果，而是将风险识别、趋势历史、执行遥测和跨仓治理动作串成闭环。
+            你可以从单仓起步，平滑扩展到组织级稳定性交付体系。
           </p>
           <div class="hero-actions">
             <a class="btn primary" href="https://github.com/LaplaceYoung/repo-sleep-doctor" target="_blank" rel="noreferrer">查看 GitHub</a>
             <a class="btn secondary" href="./blueprint.html">查看裂变设计</a>
-            <a class="btn secondary" href="./competitive.html">查看同类拆解</a>
+            <a class="btn secondary" href="./competitive.html">查看用法与优势</a>
           </div>
         </div>
         <aside class="stat-panel">
-          <h2 class="stat-title">裂变能力快照</h2>
+          <h2 class="stat-title">产品能力快照</h2>
           <ul class="stat-list">
             <li class="stat-item">
-              <span>报告扩散半径</span>
+              <span>治理视角</span>
               <strong class="mono">Repo -> Fleet -> Org</strong>
             </li>
             <li class="stat-item">
@@ -59,8 +59,8 @@
               <strong class="mono">CI / Hook / Dashboard</strong>
             </li>
             <li class="stat-item">
-              <span>对标样本</span>
-              <strong class="mono">5 OSS Repos</strong>
+              <span>能力模块</span>
+              <strong class="mono">5 Core Modules</strong>
             </li>
             <li class="stat-item">
               <span>标准化接入时间</span>
@@ -84,15 +84,15 @@
       <div class="cards-3">
         <article class="card">
           <h3>Loop A: 扫描即内容</h3>
-          <p>把 Fleet HTML 报告变成可分享链接，周会/复盘中自然传播，带动团队内自发接入。</p>
+          <p>把 Fleet HTML 报告变成可分享链接，周会与复盘中直接传播结果和动作。</p>
         </article>
         <article class="card">
           <h3>Loop B: 模板即复制</h3>
-          <p>输出“仓库接入模板包”（Action、参数预设、失败阈值），让新团队一键复用。</p>
+          <p>输出“仓库接入模板包”（Action、参数预设、失败阈值），让新团队低成本复用。</p>
         </article>
         <article class="card">
-          <h3>Loop C: 对照即升级</h3>
-          <p>引入同类仓库能力对照面板，明确“下一步该补什么”，推动功能迭代和外部背书。</p>
+          <h3>Loop C: 数据即增长</h3>
+          <p>通过执行遥测持续发现阻塞点，把改进动作转化成稳定交付的组织能力。</p>
         </article>
       </div>
     </section>
@@ -124,26 +124,17 @@
 
     <section class="section" data-reveal data-delay="150">
       <div class="section-head">
-        <h2 class="section-title">对照样本与借鉴点</h2>
-        <p class="section-subtitle">只引用官方仓库说明中的公开能力</p>
+        <h2 class="section-title">核心竞争力与落地场景</h2>
+        <p class="section-subtitle">面向研发、质量、管理三层角色的统一方案</p>
       </div>
       <div class="cards-2">
         <article class="card">
-          <h3>安全扫描产品化路径</h3>
-          <p>
-            借鉴 <a class="repo-link" href="https://github.com/gitleaks/gitleaks" target="_blank" rel="noreferrer">Gitleaks</a> 的 pre-commit 与 CI 场景、
-            <a class="repo-link" href="https://github.com/aquasecurity/trivy" target="_blank" rel="noreferrer">Trivy</a> 的多平台集成表达，
-            把 Repo Sleep Doctor 的输出从 CLI 扩展到协作流程。
-          </p>
+          <h3>研发视角</h3>
+          <p>在开发阶段提前阻断发布风险，减少上线前集中返工与跨团队追查成本。</p>
         </article>
         <article class="card">
-          <h3>规则生态与扩散机制</h3>
-          <p>
-            参考 <a class="repo-link" href="https://github.com/semgrep/semgrep" target="_blank" rel="noreferrer">Semgrep</a> 的规则驱动实践、
-            <a class="repo-link" href="https://github.com/DavidAnson/markdownlint" target="_blank" rel="noreferrer">markdownlint</a> 的规则化结构、
-            <a class="repo-link" href="https://github.com/ianlewis/todos" target="_blank" rel="noreferrer">todos</a> 的多格式输出，
-            构建“规则包 + 可分享报告 + 接入模板”的增长飞轮。
-          </p>
+          <h3>质量视角</h3>
+          <p>通过统一阈值与规则预设，把“质量标准”变成可执行、可审计的流水线规则。</p>
         </article>
       </div>
     </section>

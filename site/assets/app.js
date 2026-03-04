@@ -64,6 +64,45 @@ if (counterNodes.length > 0) {
   }
 }
 
+const sceneButtons = Array.from(document.querySelectorAll("[data-tab-target]"));
+if (sceneButtons.length > 0) {
+  const panels = Array.from(document.querySelectorAll("[data-tab-panel]"));
+  for (const button of sceneButtons) {
+    button.addEventListener("click", () => {
+      const target = button.getAttribute("data-tab-target");
+      for (const candidate of sceneButtons) {
+        candidate.classList.toggle("active", candidate === button);
+      }
+      for (const panel of panels) {
+        panel.classList.toggle("active", panel.getAttribute("data-tab-panel") === target);
+      }
+    });
+  }
+}
+
+const meterFills = Array.from(document.querySelectorAll(".meter-fill[data-progress]"));
+if (meterFills.length > 0) {
+  const meterObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) {
+          continue;
+        }
+        const fill = entry.target;
+        const target = Math.max(0, Math.min(100, Number(fill.getAttribute("data-progress") || 0)));
+        fill.style.transition = "width 900ms cubic-bezier(0.22, 1, 0.36, 1)";
+        fill.style.width = `${target}%`;
+        meterObserver.unobserve(fill);
+      }
+    },
+    { threshold: 0.35 }
+  );
+
+  for (const fill of meterFills) {
+    meterObserver.observe(fill);
+  }
+}
+
 const year = document.querySelector("[data-year]");
 if (year) {
   year.textContent = String(new Date().getFullYear());
