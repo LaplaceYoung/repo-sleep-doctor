@@ -1,122 +1,139 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Repo Sleep Doctor | 发布风险扫描器</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Repo Sleep Doctor | 发布风险扫描与 Fleet 看板</title>
   <style>
+    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap");
     :root {
-      --ink: #0f1f2f;
-      --muted: #4b6077;
-      --line: #c9d9e8;
-      --bg: #f4fbff;
+      --ink: #10243a;
+      --muted: #4f657a;
+      --line: #c8d8e8;
+      --bg: #f2f9ff;
       --card: #ffffff;
-      --accent: #0d7ea2;
-      --accent-2: #f08b23;
-      --ok: #13795b;
+      --blue: #0a6b94;
+      --cyan: #2c93b7;
+      --orange: #ea8a2d;
+      --good: #0f8d66;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       color: var(--ink);
+      font-family: "Noto Sans SC", "Segoe UI", sans-serif;
       background:
-        radial-gradient(circle at 14% 2%, #d8f0fb 0%, transparent 36%),
-        radial-gradient(circle at 90% 16%, #ffe8cf 0%, transparent 30%),
+        radial-gradient(circle at 10% 0%, #daf1ff 0%, transparent 36%),
+        radial-gradient(circle at 92% 10%, #ffe7d0 0%, transparent 28%),
         var(--bg);
-      font-family: "IBM Plex Sans", "Noto Sans SC", "Segoe UI", sans-serif;
     }
-    .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 20px 64px; }
-    .topbar {
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 30px 18px 54px;
+    }
+    .top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 28px;
+      gap: 12px;
+      margin-bottom: 24px;
     }
-    .brand {
-      font-weight: 700;
+    .logo {
+      font: 700 20px/1 "Space Grotesk", "Noto Sans SC", sans-serif;
       letter-spacing: 0.02em;
-      font-size: 18px;
     }
-    .tag {
+    .badge {
       border: 1px solid var(--line);
       border-radius: 999px;
-      padding: 6px 12px;
+      padding: 6px 11px;
       font-size: 12px;
       color: var(--muted);
-      background: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.86);
     }
     .hero {
       border: 1px solid var(--line);
-      background: linear-gradient(145deg, #ffffff 0%, #f7fcff 65%, #fff5ec 100%);
       border-radius: 20px;
       padding: 26px;
-      box-shadow: 0 16px 42px rgba(10, 37, 66, 0.12);
+      background: linear-gradient(145deg, #ffffff 0%, #f6fbff 62%, #fff4e8 100%);
+      box-shadow: 0 16px 40px rgba(9, 33, 60, 0.12);
+      overflow: hidden;
+      position: relative;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      right: -70px;
+      top: -70px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(44, 147, 183, 0.2) 0%, rgba(44, 147, 183, 0) 70%);
+      pointer-events: none;
     }
     .hero h1 {
-      margin: 0 0 8px;
-      font-size: clamp(30px, 5vw, 52px);
-      line-height: 1.08;
+      margin: 0;
+      font: 700 clamp(32px, 5.2vw, 54px)/1.06 "Space Grotesk", "Noto Sans SC", sans-serif;
+      max-width: 700px;
     }
     .hero p {
-      margin: 0;
-      max-width: 700px;
+      margin: 12px 0 0;
+      max-width: 760px;
       color: var(--muted);
-      font-size: 18px;
+      font-size: 17px;
+      line-height: 1.64;
     }
     .actions {
+      margin-top: 18px;
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 20px;
+      gap: 10px;
     }
     .btn {
-      display: inline-block;
-      padding: 10px 16px;
-      border-radius: 12px;
       text-decoration: none;
-      font-weight: 600;
       border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 15px;
+      font-weight: 700;
+      font-size: 14px;
       transition: transform .16s ease, box-shadow .16s ease;
     }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(15, 31, 47, 0.1); }
-    .btn-primary { background: var(--accent); color: #fff; border-color: #0b6a89; }
-    .btn-secondary { color: var(--ink); background: #fff; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(14, 35, 60, 0.12); }
+    .btn-primary { background: var(--blue); color: #fff; border-color: #085678; }
+    .btn-light { background: #fff; color: var(--ink); }
     .quick {
-      margin-top: 22px;
-      background: #0e1f31;
-      color: #e4eefb;
+      margin-top: 18px;
       border-radius: 14px;
-      padding: 14px 16px;
-      font-family: "JetBrains Mono", Consolas, monospace;
-      font-size: 13px;
+      padding: 13px 14px;
+      background: #0e1d30;
+      color: #dce8f7;
+      font: 500 12px/1.65 Consolas, "JetBrains Mono", monospace;
       overflow: auto;
     }
+    .section-title {
+      margin: 32px 0 10px;
+      font: 700 24px/1.2 "Space Grotesk", "Noto Sans SC", sans-serif;
+    }
     .grid {
-      margin-top: 26px;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
+      gap: 12px;
     }
     .card {
       border: 1px solid var(--line);
-      background: var(--card);
       border-radius: 14px;
       padding: 16px;
+      background: var(--card);
     }
     .card h3 {
-      margin: 0 0 8px;
+      margin: 0 0 7px;
       font-size: 16px;
     }
     .card p {
       margin: 0;
       color: var(--muted);
+      line-height: 1.58;
       font-size: 14px;
-      line-height: 1.55;
-    }
-    .section-title {
-      margin: 36px 0 10px;
-      font-size: 24px;
     }
     .kpis {
       display: grid;
@@ -129,104 +146,117 @@
       border-radius: 12px;
       padding: 12px;
     }
-    .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; }
-    .kpi .value { margin-top: 4px; font-size: 26px; font-weight: 700; color: var(--accent); }
-    .roadmap {
-      margin-top: 12px;
+    .kpi .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .kpi .value {
+      margin-top: 4px;
+      color: var(--blue);
+      font: 700 28px/1 "Space Grotesk", sans-serif;
+    }
+    .steps {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
     }
-    .pill {
+    .step-tag {
       display: inline-block;
       padding: 3px 8px;
       border-radius: 999px;
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: .02em;
       color: #fff;
+      letter-spacing: .02em;
     }
-    .p30 { background: var(--ok); }
-    .p60 { background: var(--accent); }
-    .p90 { background: var(--accent-2); }
+    .t1 { background: var(--good); }
+    .t2 { background: var(--blue); }
+    .t3 { background: var(--orange); }
     footer {
-      margin-top: 32px;
+      margin-top: 26px;
       color: var(--muted);
       font-size: 13px;
       text-align: center;
     }
-    @media (max-width: 900px) {
-      .grid, .kpis, .roadmap { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 920px) {
+      .grid, .kpis, .steps { grid-template-columns: 1fr 1fr; }
     }
-    @media (max-width: 640px) {
-      .grid, .kpis, .roadmap { grid-template-columns: 1fr; }
-      .hero p { font-size: 16px; }
+    @media (max-width: 680px) {
+      .grid, .kpis, .steps { grid-template-columns: 1fr; }
+      .hero p { font-size: 15px; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="topbar">
-      <div class="brand">Repo Sleep Doctor</div>
-      <div class="tag">Release Risk Scanner for Repositories</div>
+    <div class="top">
+      <div class="logo">Repo Sleep Doctor</div>
+      <div class="badge">Release Risk Scanner + Fleet Analytics</div>
     </div>
 
     <section class="hero">
-      <h1>上线前，不再“靠感觉”发版</h1>
-      <p>Repo Sleep Doctor 会在发布前自动扫描仓库风险：冲突标记、潜在密钥、调试残留、README/脚本/测试缺失，并输出可读报告与 SARIF。</p>
+      <h1>上线前，不靠感觉；
+        <br />用数据看见仓库风险</h1>
+      <p>
+        Repo Sleep Doctor 面向工程团队的发布守门场景：自动扫描冲突标记、潜在密钥、调试残留、文档与脚本缺口，
+        并输出单仓报告与跨仓 Fleet 看板，支持缓存加速与趋势跟踪。
+      </p>
       <div class="actions">
-        <a class="btn btn-primary" href="https://github.com/" target="_blank" rel="noreferrer">查看 GitHub 仓库</a>
-        <a class="btn btn-secondary" href="../README.md">查看文档</a>
+        <a class="btn btn-primary" href="https://github.com/LaplaceYoung/repo-sleep-doctor" target="_blank" rel="noreferrer">查看 GitHub 仓库</a>
+        <a class="btn btn-light" href="../README.zh-CN.md">阅读中文文档</a>
       </div>
-      <pre class="quick">npm install
-node src/cli.js . --format html --out reports/scan.html --fail-on p1</pre>
+      <pre class="quick"># 单仓扫描
+node src/cli.js . --format html --out reports/scan.html --cache-file reports/scan.cache.json --fail-on p1
+
+# 多仓扫描 + Fleet 汇总
+node src/cli.js fleet-scan ../repo-a ../repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format html --out reports/fleet.html --preset release --cache-dir reports/fleet-cache --fail-on p1</pre>
     </section>
 
     <h2 class="section-title">核心能力</h2>
     <section class="grid">
       <article class="card">
         <h3>发布阻断识别</h3>
-        <p>从 P0/P1/P2 分级输出风险，帮助团队先处理真正影响上线的问题。</p>
+        <p>P0/P1/P2 分级输出风险，优先处理真正影响上线的关键问题，降低“带病发布”概率。</p>
       </article>
       <article class="card">
-        <h3>基线增量治理</h3>
-        <p>支持 baseline + only-new，允许历史债务逐步清理，不阻断当前交付节奏。</p>
+        <h3>趋势与动量可视化</h3>
+        <p>HTML 报告内置分数趋势、规则动量、热点文件视图，帮助快速定位风险聚集点。</p>
       </article>
       <article class="card">
-        <h3>平台接入友好</h3>
-        <p>同时支持 text/json/markdown/sarif/html，便于接入 PR 检查与可视化平台。</p>
+        <h3>组织级 Fleet 汇总</h3>
+        <p>一条命令扫描多仓、写入历史、聚合看板，形成跨仓库风险排行榜和治理优先级。</p>
       </article>
     </section>
 
     <h2 class="section-title">上线指标</h2>
     <section class="kpis">
-      <div class="kpi"><div class="label">首次扫描时间</div><div class="value">&lt;5m</div></div>
-      <div class="kpi"><div class="label">CI接入时间</div><div class="value">&lt;15m</div></div>
-      <div class="kpi"><div class="label">报告格式</div><div class="value">5+</div></div>
-      <div class="kpi"><div class="label">输出目标</div><div class="value">SARIF</div></div>
+      <div class="kpi"><div class="label">首次接入</div><div class="value">&lt;30m</div></div>
+      <div class="kpi"><div class="label">报告格式</div><div class="value">6+</div></div>
+      <div class="kpi"><div class="label">缓存加速</div><div class="value">30%+</div></div>
+      <div class="kpi"><div class="label">跨仓可见性</div><div class="value">Fleet</div></div>
     </section>
 
-    <h2 class="section-title">30/60/90 路线图</h2>
-    <section class="roadmap">
+    <h2 class="section-title">30/60/90 执行节奏</h2>
+    <section class="steps">
       <article class="card">
-        <span class="pill p30">30 DAYS</span>
-        <h3>多入口分发</h3>
-        <p>完成 GitHub Action、静态落地页、Quickstart 文档与示例仓库。</p>
+        <span class="step-tag t1">30 DAYS</span>
+        <h3>扫描标准化</h3>
+        <p>建立 release/security 双预设门禁，统一团队扫描参数和 CI 失败阈值。</p>
       </article>
       <article class="card">
-        <span class="pill p60">60 DAYS</span>
-        <h3>规则与治理</h3>
-        <p>上线规则包、误报抑制策略、增量扫描参数与可追踪报表。</p>
+        <span class="step-tag t2">60 DAYS</span>
+        <h3>组织看板上线</h3>
+        <p>接入 fleet-scan，多仓历史自动汇总，输出风险仓库排名与规则热度趋势。</p>
       </article>
       <article class="card">
-        <span class="pill p90">90 DAYS</span>
-        <h3>团队级能力</h3>
-        <p>提供趋势看板和团队协作策略，形成“开源引流 + 团队版”路径。</p>
+        <span class="step-tag t3">90 DAYS</span>
+        <h3>增长与推流</h3>
+        <p>基于 GitHub Pages 持续发布示例看板与版本升级解读，推动社区复用与裂变传播。</p>
       </article>
     </section>
 
-    <footer>© 2026 Repo Sleep Doctor. Built for release confidence.</footer>
+    <footer>© 2026 Repo Sleep Doctor · Built for release confidence and fleet-scale visibility.</footer>
   </div>
 </body>
 </html>
-

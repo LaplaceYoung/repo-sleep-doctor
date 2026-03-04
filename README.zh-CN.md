@@ -64,6 +64,9 @@ node src/cli.js . --cache-file reports/scan.cache.json --format text --fail-on n
 
 # 聚合多个仓库历史，输出 fleet 看板
 node src/cli.js fleet reports/repo-a.history.json reports/repo-b.history.json --format html --out reports/fleet.html
+
+# 一次执行多仓扫描，自动写历史并生成 fleet 报告
+node src/cli.js fleet-scan ../repo-a ../repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-repos --scan-format html --format html --out reports/fleet.html --preset release --cache-dir reports/fleet-cache --fail-on p1
 ```
 
 ## CLI 用法
@@ -72,6 +75,7 @@ node src/cli.js fleet reports/repo-a.history.json reports/repo-b.history.json --
 node src/cli.js [path] [options]
 node src/cli.js scan [path] [options]
 node src/cli.js fleet <history-file...> [options]
+node src/cli.js fleet-scan <repo-path...> [options]
 ```
 
 扫描参数：
@@ -98,6 +102,24 @@ Fleet 参数：
 - `--top-repos <number>` 输出中展示的仓库数量上限（默认 20）
 - `--top-rules <number>` 输出中展示的规则数量上限（默认 10）
 
+Fleet-scan 参数：
+- `--repos-file <file>` 从文本文件加载仓库路径（按行分隔）
+- `--history-dir <dir>` 每个仓库历史文件输出目录（默认 `reports/fleet-history`）
+- `--history-limit <number>` 每个仓库仅保留最近 N 条历史（默认 120）
+- `--format <text|json|markdown|html>` fleet 输出格式，默认 `text`
+- `--out <file>` 写入 fleet 报告文件
+- `--top-repos <number>` fleet 报告中展示仓库数量上限（默认 20）
+- `--top-rules <number>` fleet 报告中展示规则数量上限（默认 10）
+- `--scan-format <text|json|markdown|sarif|html|junit>` 每个仓库报告格式
+- `--scan-out-dir <dir>` 输出每个仓库报告目录（默认 `scan-format=html`）
+- `--preset <all|release|security>` 统一应用到全部仓库的规则预设
+- `--cache-dir <dir>` 每个仓库缓存文件目录（重复扫描提速）
+- `--max-files <number>` 每个仓库扫描文件上限
+- `--changed-since <git-ref>` 每个仓库只扫描相对 git 引用的变更
+- `--config <file>` 所有仓库统一使用同一配置文件路径
+- `--no-gitignore` 所有仓库都禁用 `.gitignore` 匹配
+- `--fail-on <none|p0|p1|p2>` 只要任一仓库达到阈值，命令退出码为 1
+
 ## 基线工作流
 
 ```bash
@@ -116,6 +138,9 @@ node src/cli.js . --history-file reports/history.json --history-limit 200 --form
 
 # 聚合多个仓库历史（可在任意位置执行）
 node src/cli.js fleet repo-a/reports/history.json repo-b/reports/history.json --format markdown --out reports/fleet.md
+
+# 一条命令完成多仓扫描 + 历史刷新 + fleet 汇总
+node src/cli.js fleet-scan repo-a repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format markdown --out reports/fleet.md --fail-on none
 ```
 
 ## 配置

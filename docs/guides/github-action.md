@@ -54,3 +54,25 @@ node src/cli.js . --preset release --fail-on p1
 ```bash
 node src/cli.js . --preset security --fail-on p0
 ```
+
+## Multi-repository fleet scan
+
+When you want one workflow run to scan multiple repositories and publish a fleet dashboard:
+
+```bash
+node src/cli.js fleet-scan repo-a repo-b repo-c \
+  --history-dir reports/fleet-history \
+  --scan-out-dir reports/fleet-reports \
+  --scan-format html \
+  --format html \
+  --out reports/fleet.html \
+  --preset release \
+  --cache-dir reports/fleet-cache \
+  --fail-on p1
+```
+
+Path list mode (for generated repo inventories):
+
+```bash
+node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --format markdown --out reports/fleet.md --fail-on none
+```

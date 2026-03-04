@@ -43,6 +43,13 @@ function writeCacheFixtureRepo(rootDir) {
   fs.writeFileSync(path.join(rootDir, "test", "app.test.js"), "module.exports = {};\n", "utf8");
 }
 
+function writeFleetFixtureRepo(rootDir, options = {}) {
+  writeCacheFixtureRepo(rootDir);
+  if (options.withDebugIssue) {
+    fs.appendFileSync(path.join(rootDir, "src", "app.js"), "debugger;\n", "utf8");
+  }
+}
+
 test("scanRepository finds high-severity issues in bad fixture", () => {
   const report = scanRepository(badRepo, {
     maxFiles: 100,
@@ -421,6 +428,89 @@ test("cli cache-file option reuses cached file analysis", () => {
   const report2 = JSON.parse(run2.stdout);
   assert.ok(report2.analysis.cacheHits >= report2.fileCount);
   assert.equal(report2.analysis.cacheMisses, 0);
+});
+
+test("cli fleet-scan aggregates repositories and writes repo artifacts", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-scan-"));
+  const repoA = path.join(dir, "repo-a");
+  const repoB = path.join(dir, "repo-b");
+  const historyDir = path.join(dir, "history");
+  const scanOutDir = path.join(dir, "repo-reports");
+  writeFleetFixtureRepo(repoA);
+  writeFleetFixtureRepo(repoB, { withDebugIssue: true });
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "fleet-scan",
+      repoA,
+      repoB,
+      "--history-dir",
+      historyDir,
+      "--scan-out-dir",
+      scanOutDir,
+      "--scan-format",
+      "json",
+      "--format",
+      "json",
+      "--fail-on",
+      "none"
+    ],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.stats.repoCount, 2);
+  assert.equal(parsed.execution.totalRepos, 2);
+  assert.equal(fs.readdirSync(historyDir).length, 2);
+  assert.equal(fs.readdirSync(scanOutDir).length, 2);
+});
+
+test("cli fleet-scan can load repository paths from repos-file", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-list-"));
+  const repoA = path.join(dir, "repo-a");
+  const repoB = path.join(dir, "repo-b");
+  const historyDir = path.join(dir, "history");
+  writeFleetFixtureRepo(repoA);
+  writeFleetFixtureRepo(repoB);
+
+  const listPath = path.join(dir, "repos.txt");
+  fs.writeFileSync(listPath, `# repositories\n${repoA}\n${repoB}\n`, "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "fleet-scan", "--repos-file", listPath, "--history-dir", historyDir, "--format", "json", "--fail-on", "none"],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.stats.repoCount, 2);
+  assert.equal(parsed.execution.totalRepos, 2);
+});
+
+test("cli fleet-scan returns exit code 1 when any repo breaches fail-on threshold", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-fail-"));
+  const repoA = path.join(dir, "repo-a");
+  const repoB = path.join(dir, "repo-b");
+  const historyDir = path.join(dir, "history");
+  writeFleetFixtureRepo(repoA);
+  writeFleetFixtureRepo(repoB, { withDebugIssue: true });
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, "fleet-scan", repoA, repoB, "--history-dir", historyDir, "--format", "json", "--fail-on", "p1"],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+
+  assert.equal(result.status, 1);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.execution.failedRepos >= 1, true);
 });
 
 test("fleet report aggregates multiple history sources", () => {

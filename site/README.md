@@ -17,6 +17,15 @@ This repository already includes `.github/workflows/pages.yml`.
 3. Push changes under `site/` (or run `Deploy Site` workflow manually).
 4. The default URL becomes `https://laplaceyoung.github.io/repo-sleep-doctor/`.
 
+## Recommended live assets
+
+Pair the landing page with generated reports:
+
+```bash
+node src/cli.js . --format html --out reports/scan.html --cache-file reports/scan.cache.json --fail-on none
+node src/cli.js fleet-scan ../repo-a ../repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format html --out reports/fleet.html --fail-on none
+```
+
 ## Netlify / Vercel / Cloudflare Pages
 
 Use `site` as the publish directory.

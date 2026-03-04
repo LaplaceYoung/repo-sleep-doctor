@@ -64,6 +64,9 @@ node src/cli.js . --cache-file reports/scan.cache.json --format text --fail-on n
 
 # aggregate multiple repository histories into fleet dashboard
 node src/cli.js fleet reports/repo-a.history.json reports/repo-b.history.json --format html --out reports/fleet.html
+
+# scan multiple repositories in one run and generate fleet report + per-repo outputs
+node src/cli.js fleet-scan ../repo-a ../repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-repos --scan-format html --format html --out reports/fleet.html --preset release --cache-dir reports/fleet-cache --fail-on p1
 ```
 
 ## CLI Usage
@@ -72,6 +75,7 @@ node src/cli.js fleet reports/repo-a.history.json reports/repo-b.history.json --
 node src/cli.js [path] [options]
 node src/cli.js scan [path] [options]
 node src/cli.js fleet <history-file...> [options]
+node src/cli.js fleet-scan <repo-path...> [options]
 ```
 
 Scan options:
@@ -98,6 +102,24 @@ Fleet options:
 - `--top-repos <number>` limit top repositories in output (default 20)
 - `--top-rules <number>` limit top rules in output (default 10)
 
+Fleet-scan options:
+- `--repos-file <file>` load repository paths from newline-delimited file
+- `--history-dir <dir>` per-repo history output directory (default `reports/fleet-history`)
+- `--history-limit <number>` keep latest N history entries per repo (default 120)
+- `--format <text|json|markdown|html>` fleet output format, default `text`
+- `--out <file>` write fleet report to file
+- `--top-repos <number>` limit top repositories in output (default 20)
+- `--top-rules <number>` limit top rules in output (default 10)
+- `--scan-format <text|json|markdown|sarif|html|junit>` per-repo report format
+- `--scan-out-dir <dir>` write per-repo reports (defaults `scan-format=html`)
+- `--preset <all|release|security>` apply preset for all repositories
+- `--cache-dir <dir>` write per-repo scan cache files for faster reruns
+- `--max-files <number>` cap scanned files per repository
+- `--changed-since <git-ref>` scan only repo changes since git ref
+- `--config <file>` use same config file path for each repository
+- `--no-gitignore` disable `.gitignore` matching for every repository
+- `--fail-on <none|p0|p1|p2>` command exits with status 1 when any repository breaches threshold
+
 ## Baseline Workflow
 
 ```bash
@@ -116,6 +138,9 @@ node src/cli.js . --history-file reports/history.json --history-limit 200 --form
 
 # aggregate multiple repos (run from any location)
 node src/cli.js fleet repo-a/reports/history.json repo-b/reports/history.json --format markdown --out reports/fleet.md
+
+# one-command multi-repo scan + history refresh + fleet report
+node src/cli.js fleet-scan repo-a repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format markdown --out reports/fleet.md --fail-on none
 ```
 
 ## Config
