@@ -7,7 +7,7 @@ This folder contains a static multi-page promo site:
 - `blueprint.html`: fission growth blueprint page
 - `assets/`: shared styles and interactions
 
-Last updated: 2026-03-04
+Last updated: 2026-03-04 21:34 +08:00
 
 ## Local Preview
 
