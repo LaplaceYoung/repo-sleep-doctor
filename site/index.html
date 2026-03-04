@@ -1,13 +1,19 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Repo Sleep Doctor | Fleet 发布风险与增长引擎</title>
+  <title>Repo Sleep Doctor | 发布风险治理与团队增长</title>
   <meta
     name="description"
-    content="Repo Sleep Doctor 宣传站：面向工程团队的发布风险扫描、Fleet 汇总和执行遥测产品能力。"
+    content="Repo Sleep Doctor 宣传页：将仓库扫描升级为团队级发布风险治理系统，覆盖单仓检查、Fleet 汇总、执行遥测与恢复节奏。"
   />
+  <meta property="og:title" content="Repo Sleep Doctor | 发布风险治理与团队增长" />
+  <meta property="og:description" content="从单仓扫描到 Fleet 治理，输出可执行的发布风险闭环。" />
+  <meta property="og:type" content="website" />
+  <link rel="canonical" href="./index.html" />
+  <link rel="alternate" hreflang="zh-CN" href="./index.html" />
+  <link rel="alternate" hreflang="en" href="./en/index.html" />
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./assets/styles.css" />
 </head>
@@ -20,9 +26,10 @@
       </a>
       <nav class="nav-links" aria-label="主导航">
         <a class="nav-link" href="./index.html">首页</a>
-        <a class="nav-link" href="./competitive.html">用法优势</a>
+        <a class="nav-link" href="./competitive.html">用法与优势</a>
         <a class="nav-link" href="./blueprint.html">增长蓝图</a>
         <a class="nav-link" href="../README.md">Docs</a>
+        <a class="nav-link" href="./en/index.html">EN</a>
       </nav>
     </div>
   </header>
@@ -34,43 +41,43 @@
           <div class="badge-row">
             <span class="badge">Release Gate</span>
             <span class="badge">Fleet Intelligence</span>
-            <span class="badge">Growth Loop Ready</span>
+            <span class="badge">Recovery Cadence</span>
           </div>
-          <h1>把扫描工具<br />做成会自增长的产品</h1>
+          <h1>让发布风险治理<br />从工具升级为产品</h1>
           <p class="lead">
-            Repo Sleep Doctor 不只输出一份扫描结果，而是将风险识别、趋势历史、执行遥测和跨仓治理动作串成闭环。
-            你可以从单仓起步，平滑扩展到组织级稳定性交付体系。
+            Repo Sleep Doctor 不只输出一次扫描结果，而是把风险识别、历史趋势、跨仓汇总、执行遥测和恢复节奏串成完整闭环。
+            研发、质量和管理层可以在同一套报告里看到问题、优先级和行动路径。
           </p>
           <div class="hero-actions">
             <a class="btn primary" href="https://github.com/LaplaceYoung/repo-sleep-doctor" target="_blank" rel="noreferrer">查看 GitHub</a>
-            <a class="btn secondary" href="./blueprint.html">查看裂变设计</a>
             <a class="btn secondary" href="./competitive.html">查看用法与优势</a>
+            <a class="btn secondary" href="./blueprint.html">查看增长蓝图</a>
           </div>
         </div>
         <aside class="stat-panel">
-          <h2 class="stat-title">产品能力快照</h2>
+          <h2 class="stat-title">能力快照</h2>
           <ul class="stat-list">
             <li class="stat-item">
               <span>治理视角</span>
-              <strong class="mono">Repo -> Fleet -> Org</strong>
+              <strong class="mono">Repo -&gt; Fleet -&gt; Org</strong>
             </li>
             <li class="stat-item">
-              <span>可复用落地包</span>
-              <strong class="mono">CI / Hook / Dashboard</strong>
+              <span>接入方式</span>
+              <strong class="mono">CLI / CI / Dashboard</strong>
             </li>
             <li class="stat-item">
-              <span>能力模块</span>
-              <strong class="mono">5 Core Modules</strong>
+              <span>输出格式</span>
+              <strong class="mono">Text / JSON / HTML / SARIF</strong>
             </li>
             <li class="stat-item">
-              <span>标准化接入时间</span>
+              <span>首轮接入时间</span>
               <strong class="mono">&lt; 30 min</strong>
             </li>
           </ul>
           <div class="pill-list">
-            <span class="pill">JSON / HTML / SARIF / JUnit</span>
             <span class="pill">Discover + Export</span>
             <span class="pill">Execution Telemetry</span>
+            <span class="pill">Recovery Metrics</span>
           </div>
         </aside>
       </div>
@@ -78,37 +85,37 @@
 
     <section class="section" data-reveal data-delay="80">
       <div class="section-head">
-        <h2 class="section-title">裂变增长回路</h2>
-        <p class="section-subtitle">从“单次扫描”升级到“组织持续传播”</p>
+        <h2 class="section-title">为什么团队会持续选择它</h2>
+        <p class="section-subtitle">不是“发现问题”而是“持续降低风险”</p>
       </div>
       <div class="cards-3">
         <article class="card">
-          <h3>Loop A: 扫描即内容</h3>
-          <p>把 Fleet HTML 报告变成可分享链接，周会与复盘中直接传播结果和动作。</p>
+          <h3>研发可执行</h3>
+          <p>在本地和 CI 使用同一参数标准，把高风险问题在合并前拦截，不靠口头约定。</p>
         </article>
         <article class="card">
-          <h3>Loop B: 模板即复制</h3>
-          <p>输出“仓库接入模板包”（Action、参数预设、失败阈值），让新团队低成本复用。</p>
+          <h3>管理可追踪</h3>
+          <p>Fleet 报告统一展示风险仓库、失败仓库、慢仓库与热点规则，周会可直接复盘。</p>
         </article>
         <article class="card">
-          <h3>Loop C: 数据即增长</h3>
-          <p>通过执行遥测持续发现阻塞点，把改进动作转化成稳定交付的组织能力。</p>
+          <h3>组织可复制</h3>
+          <p>通过 discover/export 与模板化命令，把单仓实践快速扩展到多团队多仓库。</p>
         </article>
       </div>
     </section>
 
     <section class="section" data-reveal data-delay="120">
       <div class="section-head">
-        <h2 class="section-title">增长型能力指标</h2>
-        <p class="section-subtitle">示例目标值，驱动产品化运营</p>
+        <h2 class="section-title">宣传页关键指标示例</h2>
+        <p class="section-subtitle">用于展示产品化价值，而非真实线上承诺</p>
       </div>
       <div class="kpi-grid">
         <div class="kpi">
-          <div class="kpi-label">Weekly 新增仓库</div>
-          <div class="kpi-value" data-count-to="12" data-prefix="+" data-suffix="" data-duration="1200">+0</div>
+          <div class="kpi-label">新接入仓库 / 周</div>
+          <div class="kpi-value" data-count-to="12" data-prefix="+" data-duration="1200">+0</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">Fleet 报告分享率</div>
+          <div class="kpi-label">Fleet 报告覆盖率</div>
           <div class="kpi-value" data-count-to="68" data-suffix="%" data-duration="1200">0%</div>
         </div>
         <div class="kpi">
@@ -116,7 +123,7 @@
           <div class="kpi-value" data-count-to="24" data-prefix="x" data-duration="1200">x0</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">发现到修复周期</div>
+          <div class="kpi-label">风险恢复周期</div>
           <div class="kpi-value" data-count-to="3" data-suffix="d" data-duration="1200">0d</div>
         </div>
       </div>
@@ -124,39 +131,58 @@
 
     <section class="section" data-reveal data-delay="150">
       <div class="section-head">
-        <h2 class="section-title">核心竞争力与落地场景</h2>
-        <p class="section-subtitle">面向研发、质量、管理三层角色的统一方案</p>
+        <h2 class="section-title">一键演示命令</h2>
+        <p class="section-subtitle">可直接复制到本地或 CI 验证完整流程</p>
       </div>
-      <div class="cards-2">
-        <article class="card">
-          <h3>研发视角</h3>
-          <p>在开发阶段提前阻断发布风险，减少上线前集中返工与跨团队追查成本。</p>
-        </article>
-        <article class="card">
-          <h3>质量视角</h3>
-          <p>通过统一阈值与规则预设，把“质量标准”变成可执行、可审计的流水线规则。</p>
-        </article>
-      </div>
+      <pre class="code-block"># 1) 自动发现并导出仓库列表
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
+
+# 2) 批量扫描并生成 Fleet HTML 看板
+node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format html --out reports/fleet.html --continue-on-error --fail-on p1
+
+# 3) 发布宣传页目录
+npx serve site</pre>
     </section>
 
     <section class="section" data-reveal data-delay="180">
       <div class="section-head">
-        <h2 class="section-title">一键演示命令</h2>
-        <p class="section-subtitle">可直接复制到 CI 或本地演示</p>
+        <h2 class="section-title">可信证据</h2>
+        <p class="section-subtitle">把“能做”转化为“可信”</p>
       </div>
-      <pre class="code-block"># 1) 发现并导出仓库清单
-node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
+      <div class="proof-grid">
+        <article class="proof-card">
+          <strong class="proof-value">31+</strong>
+          <span class="proof-label">核心自动化测试覆盖</span>
+        </article>
+        <article class="proof-card">
+          <strong class="proof-value">5</strong>
+          <span class="proof-label">输出形态（文本/JSON/Markdown/SARIF/HTML）</span>
+        </article>
+        <article class="proof-card">
+          <strong class="proof-value">Fleet</strong>
+          <span class="proof-label">支持跨仓趋势、失败仓和恢复节奏追踪</span>
+        </article>
+        <article class="proof-card">
+          <strong class="proof-value">CI Ready</strong>
+          <span class="proof-label">可直接接入流水线门禁与周报复盘</span>
+        </article>
+      </div>
+    </section>
 
-# 2) 批量扫描并输出 Fleet 看板
-node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format html --out reports/fleet.html --continue-on-error --fail-on p1
-
-# 3) 用 site/ 做宣传页发布目录
-npx serve site</pre>
+    <section class="quick-cta" data-reveal data-delay="220">
+      <div>
+        <strong>准备把扫描结果升级为治理看板？</strong>
+        <p>从仓库发现到 Fleet 报告，10 分钟跑通首条闭环。</p>
+      </div>
+      <div class="quick-cta-actions">
+        <a class="btn primary" href="https://github.com/LaplaceYoung/repo-sleep-doctor" target="_blank" rel="noreferrer">立即开始</a>
+        <a class="btn secondary" href="./competitive.html">查看落地路径</a>
+      </div>
     </section>
 
     <footer class="foot">
       <span>© <span data-year></span> Repo Sleep Doctor</span>
-      <span>From scanner utility to growth-ready product surface.</span>
+      <span>From scan output to growth-ready risk governance.</span>
     </footer>
   </main>
 

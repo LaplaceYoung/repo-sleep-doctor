@@ -1,6 +1,6 @@
 {
   "name": "repo-sleep-doctor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A zero-dependency CLI that scans repositories and reports release risks.",
   "bin": {
     "repo-sleep-doctor": "src/cli.js"

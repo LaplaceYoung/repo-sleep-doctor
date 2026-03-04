@@ -21,6 +21,80 @@ function safeNumber(value, fallback = 0) {
   return numeric;
 }
 
+function percentile(values, p) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return 0;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
+  return safeNumber(sorted[index], 0);
+}
+
+function detectDirectoryTag(repoPath, discoverRoot) {
+  if (!repoPath) {
+    return "(unknown)";
+  }
+  const normalizedPath = path.resolve(String(repoPath));
+  if (discoverRoot) {
+    const root = path.resolve(String(discoverRoot));
+    const rel = path.relative(root, normalizedPath);
+    if (rel && !rel.startsWith("..") && !path.isAbsolute(rel)) {
+      const segment = rel.split(path.sep).find(Boolean);
+      return segment || "(root)";
+    }
+  }
+  const parent = path.basename(path.dirname(normalizedPath));
+  return parent || "(root)";
+}
+
+function summarizeRecoveryCadence(repos) {
+  const metrics = {
+    riskyLatestRepos: 0,
+    recoveredLatestRepos: 0,
+    regressions: 0,
+    recoveryEvents: 0,
+    avgScansToRecovery: 0,
+    avgHoursToRecovery: 0
+  };
+
+  let totalRecoveryScans = 0;
+  let totalRecoveryHours = 0;
+  let recoveryHoursCount = 0;
+
+  for (const repo of repos || []) {
+    const cadence = repo && repo.cadence ? repo.cadence : null;
+    if (!cadence) {
+      continue;
+    }
+    if (cadence.latestRisk) {
+      metrics.riskyLatestRepos += 1;
+    }
+    if (cadence.recoveredLatest) {
+      metrics.recoveredLatestRepos += 1;
+    }
+    if (cadence.regressionLatest) {
+      metrics.regressions += 1;
+    }
+    for (const event of cadence.recoveryEvents || []) {
+      metrics.recoveryEvents += 1;
+      totalRecoveryScans += safeNumber(event.scansToRecovery, 0);
+      if (Number.isFinite(Number(event.hoursToRecovery))) {
+        totalRecoveryHours += Number(event.hoursToRecovery);
+        recoveryHoursCount += 1;
+      }
+    }
+  }
+
+  if (metrics.recoveryEvents > 0) {
+    metrics.avgScansToRecovery = Number((totalRecoveryScans / metrics.recoveryEvents).toFixed(2));
+  }
+  if (recoveryHoursCount > 0) {
+    metrics.avgHoursToRecovery = Number((totalRecoveryHours / recoveryHoursCount).toFixed(2));
+  }
+
+  return metrics;
+}
+
 function summarizeExecution(execution) {
   if (!execution || typeof execution !== "object") {
     return null;
@@ -32,6 +106,8 @@ function summarizeExecution(execution) {
   const errorRepos = safeNumber(execution.errorRepos, 0);
   const durationMs = safeNumber(execution.durationMs, 0);
   const successRate = totalRepos > 0 ? Number(((Math.max(totalRepos - failedRepos, 0) / totalRepos) * 100).toFixed(1)) : 100;
+  const failRate = totalRepos > 0 ? Number(((failedRepos / totalRepos) * 100).toFixed(1)) : 0;
+  const errorRate = totalRepos > 0 ? Number(((errorRepos / totalRepos) * 100).toFixed(1)) : 0;
   const repoRuns = Array.isArray(execution.repoRuns) ? execution.repoRuns : [];
 
   const slowRepos = repoRuns
@@ -56,6 +132,82 @@ function summarizeExecution(execution) {
     .sort((a, b) => b.hitRate - a.hitRate || b.hits - a.hits || a.repoId.localeCompare(b.repoId))
     .slice(0, 5);
 
+  const missingRepos = repoRuns
+    .filter((repo) => repo && repo.status === "error")
+    .map((repo) => ({
+      repoId: String(repo.repoId || ""),
+      path: String(repo.path || ""),
+      error: String(repo.error || "")
+    }))
+    .slice(0, 10);
+
+  const discoverRoot = execution.discoverRoot || null;
+  const groupMap = new Map();
+  for (const repo of repoRuns) {
+    if (!repo || typeof repo !== "object") {
+      continue;
+    }
+    const tag = detectDirectoryTag(repo.path, discoverRoot);
+    if (!groupMap.has(tag)) {
+      groupMap.set(tag, {
+        tag,
+        total: 0,
+        scanned: 0,
+        failed: 0,
+        errors: 0,
+        durationMs: 0
+      });
+    }
+    const group = groupMap.get(tag);
+    group.total += 1;
+    group.durationMs += safeNumber(repo.durationMs, 0);
+    if (repo.status !== "error") {
+      group.scanned += 1;
+    } else {
+      group.errors += 1;
+    }
+    if (repo.failed) {
+      group.failed += 1;
+    }
+  }
+
+  const directoryGroups = Array.from(groupMap.values())
+    .map((group) => ({
+      tag: group.tag,
+      total: group.total,
+      scanned: group.scanned,
+      failed: group.failed,
+      errors: group.errors,
+      avgDurationMs: group.total > 0 ? Math.round(group.durationMs / group.total) : 0,
+      successRate: group.total > 0 ? Number((((group.total - group.failed) / group.total) * 100).toFixed(1)) : 100
+    }))
+    .sort((a, b) => b.total - a.total || a.tag.localeCompare(b.tag))
+    .slice(0, 10);
+
+  const repoDurations = repoRuns
+    .map((repo) => safeNumber(repo && repo.durationMs, NaN))
+    .filter((duration) => Number.isFinite(duration) && duration >= 0);
+  const avgRepoMs =
+    repoDurations.length > 0
+      ? Math.round(repoDurations.reduce((sum, duration) => sum + duration, 0) / repoDurations.length)
+      : 0;
+  const p95RepoMs = Math.round(percentile(repoDurations, 95));
+
+  const timing = {
+    totalMs: durationMs,
+    avgRepoMs,
+    p95RepoMs
+  };
+  const hotspots = {
+    slowRepos,
+    cacheRank
+  };
+  const stability = {
+    successRate,
+    failRate,
+    errorRate
+  };
+
   return {
     totalRepos,
     scannedRepos,
@@ -67,8 +219,13 @@ function summarizeExecution(execution) {
     continueOnError: Boolean(execution.continueOnError),
     startedAt: execution.startedAt || null,
     finishedAt: execution.finishedAt || null,
+    timing,
+    hotspots,
+    stability,
     slowRepos,
-    cacheRank
+    cacheRank,
+    missingRepos,
+    directoryGroups
   };
 }
 
@@ -98,7 +255,14 @@ function summarizeRepo(historyPath, entries) {
       scoreDelta: 0,
       latestSummary: { p0: 0, p1: 0, p2: 0 },
       latestRuleCounts: {},
-      latestScannedAt: null
+      latestScannedAt: null,
+      cadence: {
+        latestRisk: false,
+        previousRisk: false,
+        recoveredLatest: false,
+        regressionLatest: false,
+        recoveryEvents: []
+      }
     };
   }
 
@@ -108,6 +272,38 @@ function summarizeRepo(historyPath, entries) {
   const sumScore = scoreSeries.reduce((sum, score) => sum + score, 0);
   const avgScore = sumScore / scoreSeries.length;
   const scoreDelta = scoreSeries[scoreSeries.length - 1] - scoreSeries[0];
+  const riskFlags = entries.map((entry) => {
+    const summary = entry && entry.summary ? entry.summary : {};
+    return safeNumber(summary.p0, 0) > 0 || safeNumber(summary.p1, 0) > 0;
+  });
+  const previousRisk = riskFlags.length > 1 ? Boolean(riskFlags[riskFlags.length - 2]) : false;
+  const latestRisk = Boolean(riskFlags[riskFlags.length - 1]);
+  const recoveryEvents = [];
+  let openRiskStart = null;
+  for (let i = 0; i < riskFlags.length; i += 1) {
+    const isRisk = riskFlags[i];
+    const prevRisk = i > 0 ? riskFlags[i - 1] : false;
+    if (isRisk && !prevRisk) {
+      openRiskStart = i;
+      continue;
+    }
+    if (!isRisk && prevRisk && openRiskStart !== null) {
+      const riskyEntry = entries[openRiskStart];
+      const recoveredEntry = entries[i];
+      let hoursToRecovery = null;
+      const startMs = Date.parse(riskyEntry && riskyEntry.scannedAt ? riskyEntry.scannedAt : "");
+      const endMs = Date.parse(recoveredEntry && recoveredEntry.scannedAt ? recoveredEntry.scannedAt : "");
+      if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs) {
+        hoursToRecovery = Number((((endMs - startMs) / 36e5)).toFixed(2));
+      }
+      recoveryEvents.push({
+        scansToRecovery: i - openRiskStart,
+        hoursToRecovery,
+        recoveredAt: recoveredEntry && recoveredEntry.scannedAt ? recoveredEntry.scannedAt : null
+      });
+      openRiskStart = null;
+    }
+  }
 
   return {
     repo: detectRepoName(historyPath),
@@ -118,7 +314,14 @@ function summarizeRepo(historyPath, entries) {
     scoreDelta: Number(scoreDelta.toFixed(2)),
     latestSummary: latest && latest.summary ? latest.summary : { p0: 0, p1: 0, p2: 0 },
     latestRuleCounts: latest && latest.ruleCounts ? latest.ruleCounts : {},
-    latestScannedAt: latest && latest.scannedAt ? latest.scannedAt : null
+    latestScannedAt: latest && latest.scannedAt ? latest.scannedAt : null,
+    cadence: {
+      latestRisk,
+      previousRisk,
+      recoveredLatest: !latestRisk && previousRisk,
+      regressionLatest: latestRisk && !previousRisk,
+      recoveryEvents
+    }
   };
 }
 
@@ -166,6 +369,8 @@ function buildFleetReport(historyPaths, options = {}) {
     .sort((a, b) => b.count - a.count || a.ruleId.localeCompare(b.ruleId))
     .slice(0, options.topRules || 10);
 
+  const recovery = summarizeRecoveryCadence(scannedRepos);
+
   return {
     tool: "repo-sleep-doctor",
     generatedAt: new Date().toISOString(),
@@ -177,7 +382,8 @@ function buildFleetReport(historyPaths, options = {}) {
       riskRepos
     },
     repos: repos.slice(0, options.topRepos || 20),
-    topRules
+    topRules,
+    recovery
   };
 }
 
@@ -212,7 +418,37 @@ function formatFleetText(report) {
     lines.push(
       `- total=${executionSummary.totalRepos} scanned=${executionSummary.scannedRepos} failed=${executionSummary.failedRepos} errors=${executionSummary.errorRepos} successRate=${executionSummary.successRate}% durationMs=${executionSummary.durationMs}`
     );
+    lines.push(
+      `- timing(totalMs=${executionSummary.timing.totalMs}, avgRepoMs=${executionSummary.timing.avgRepoMs}, p95RepoMs=${executionSummary.timing.p95RepoMs})`
+    );
+    lines.push(
+      `- stability(successRate=${executionSummary.stability.successRate}%, failRate=${executionSummary.stability.failRate}%, errorRate=${executionSummary.stability.errorRate}%)`
+    );
     lines.push(`- failOn=${executionSummary.failOn} continueOnError=${executionSummary.continueOnError}`);
+    if (executionSummary.directoryGroups.length > 0) {
+      lines.push("- directory groups:");
+      for (const group of executionSummary.directoryGroups) {
+        lines.push(
+          `  - ${group.tag}: total=${group.total}, scanned=${group.scanned}, failed=${group.failed}, errors=${group.errors}, successRate=${group.successRate}%`
+        );
+      }
+    }
+    if (executionSummary.missingRepos.length > 0) {
+      lines.push("- missing/error repos:");
+      for (const repo of executionSummary.missingRepos) {
+        lines.push(`  - ${repo.repoId || "(unknown)"}: ${repo.error}`);
+      }
+    }
+  }
+  if (report.recovery) {
+    lines.push("");
+    lines.push("Recovery:");
+    lines.push(
+      `- riskyLatest=${report.recovery.riskyLatestRepos} recoveredLatest=${report.recovery.recoveredLatestRepos} regressions=${report.recovery.regressions}`
+    );
+    lines.push(
+      `- recoveryEvents=${report.recovery.recoveryEvents} avgScansToRecovery=${report.recovery.avgScansToRecovery} avgHoursToRecovery=${report.recovery.avgHoursToRecovery}`
+    );
   }
   return lines.join("\n");
 }
@@ -227,6 +463,11 @@ function formatFleetMarkdown(report) {
   lines.push(`- Total Scans: \`${report.stats.totalScans}\``);
   lines.push(`- Average Latest Score: \`${report.stats.avgLatestScore}\``);
   lines.push(`- Repos With P0/P1: \`${report.stats.riskRepos}\``);
+  if (report.recovery) {
+    lines.push(`- Recovery Events: \`${report.recovery.recoveryEvents}\``);
+    lines.push(`- Avg Scans To Recovery: \`${report.recovery.avgScansToRecovery}\``);
+    lines.push(`- Avg Hours To Recovery: \`${report.recovery.avgHoursToRecovery}\``);
+  }
   lines.push("");
 
   lines.push("## Top Rules");
@@ -264,15 +505,35 @@ function formatFleetMarkdown(report) {
     lines.push(`- Failed Repos: \`${executionSummary.failedRepos}\``);
     lines.push(`- Error Repos: \`${executionSummary.errorRepos}\``);
     lines.push(`- Success Rate: \`${executionSummary.successRate}%\``);
+    lines.push(`- Fail Rate: \`${executionSummary.stability.failRate}%\``);
+    lines.push(`- Error Rate: \`${executionSummary.stability.errorRate}%\``);
     lines.push(`- Duration: \`${executionSummary.durationMs}ms\``);
+    lines.push(
+      `- Timing: \`totalMs=${executionSummary.timing.totalMs} avgRepoMs=${executionSummary.timing.avgRepoMs} p95RepoMs=${executionSummary.timing.p95RepoMs}\``
+    );
     lines.push(`- Fail On: \`${executionSummary.failOn}\``);
     lines.push(`- Continue On Error: \`${executionSummary.continueOnError}\``);
+    if (executionSummary.directoryGroups.length > 0) {
+      lines.push("- Directory Groups:");
+      for (const group of executionSummary.directoryGroups) {
+        lines.push(
+          `  - \`${group.tag}\`: total=${group.total}, scanned=${group.scanned}, failed=${group.failed}, errors=${group.errors}, successRate=${group.successRate}%`
+        );
+      }
+    }
+    if (executionSummary.missingRepos.length > 0) {
+      lines.push("- Missing/Error Repos:");
+      for (const repo of executionSummary.missingRepos) {
+        lines.push(`  - \`${repo.repoId || "(unknown)"}\`: ${repo.error}`);
+      }
+    }
   }
   return lines.join("\n");
 }
 
 function formatFleetHtml(report) {
   const executionSummary = summarizeExecution(report.execution);
+  const recovery = report.recovery || summarizeRecoveryCadence(report.repos || []);
   const topRuleMax = report.topRules.length > 0 ? report.topRules[0].count : 1;
   const ruleRows =
     report.topRules.length === 0
@@ -307,6 +568,7 @@ function formatFleetHtml(report) {
   const executionMetrics = executionSummary
     ? `<section class="metrics exec-metrics">
         <div class="metric"><div class="k">Success Rate</div><div class="v">${executionSummary.successRate}%</div></div>
+        <div class="metric"><div class="k">P95 Repo</div><div class="v">${executionSummary.timing.p95RepoMs}ms</div></div>
         <div class="metric"><div class="k">Failed</div><div class="v">${executionSummary.failedRepos}</div></div>
         <div class="metric"><div class="k">Errors</div><div class="v">${executionSummary.errorRepos}</div></div>
         <div class="metric"><div class="k">Duration</div><div class="v">${executionSummary.durationMs}ms</div></div>
@@ -314,7 +576,7 @@ function formatFleetHtml(report) {
     : "";
 
   const slowRepoRows = executionSummary
-    ? executionSummary.slowRepos
+    ? executionSummary.hotspots.slowRepos
         .map(
           (repo) =>
             `<tr><td>${escapeHtml(repo.repoId || "(unknown)")}</td><td>${repo.durationMs}</td><td>${escapeHtml(repo.status)}</td></tr>`
@@ -322,7 +584,7 @@ function formatFleetHtml(report) {
         .join("")
     : "";
   const cacheRows = executionSummary
-    ? executionSummary.cacheRank
+    ? executionSummary.hotspots.cacheRank
         .map(
           (repo) =>
             `<tr><td>${escapeHtml(repo.repoId || "(unknown)")}</td><td>${repo.hitRate}%</td><td>${repo.hits}/${repo.misses}</td></tr>`
@@ -355,6 +617,62 @@ function formatFleetHtml(report) {
         </div>
       </section>`
     : "";
+
+  const groupRows = executionSummary
+    ? executionSummary.directoryGroups
+        .map(
+          (group) =>
+            `<tr><td>${escapeHtml(group.tag)}</td><td>${group.total}</td><td>${group.scanned}</td><td>${group.failed}</td><td>${group.errors}</td><td>${group.successRate}%</td></tr>`
+        )
+        .join("")
+    : "";
+
+  const missingRows = executionSummary
+    ? executionSummary.missingRepos
+        .map(
+          (repo) =>
+            `<tr><td>${escapeHtml(repo.repoId || "(unknown)")}</td><td>${escapeHtml(repo.path || "-")}</td><td>${escapeHtml(
+              repo.error || "-"
+            )}</td></tr>`
+        )
+        .join("")
+    : "";
+
+  const directoryBlock = executionSummary
+    ? `<section class="panel exec-panel">
+        <h2>Directory Groups</h2>
+        <div class="mini-table">
+          <table>
+            <thead><tr><th>Tag</th><th>Total</th><th>Scanned</th><th>Failed</th><th>Errors</th><th>Success</th></tr></thead>
+            <tbody>${groupRows || '<tr><td colspan="6">No group data.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </section>`
+    : "";
+
+  const missingBlock = executionSummary
+    ? `<section class="panel exec-panel">
+        <h2>Missing / Error Repositories</h2>
+        <div class="mini-table">
+          <table>
+            <thead><tr><th>Repo</th><th>Path</th><th>Error</th></tr></thead>
+            <tbody>${missingRows || '<tr><td colspan="3">No missing repositories.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </section>`
+    : "";
+
+  const recoveryBlock = `<section class="panel exec-panel">
+      <h2>Recovery Cadence</h2>
+      <section class="metrics exec-metrics">
+        <div class="metric"><div class="k">Risky Latest</div><div class="v">${recovery.riskyLatestRepos}</div></div>
+        <div class="metric"><div class="k">Recovered Latest</div><div class="v">${recovery.recoveredLatestRepos}</div></div>
+        <div class="metric"><div class="k">Regressions</div><div class="v">${recovery.regressions}</div></div>
+        <div class="metric"><div class="k">Events</div><div class="v">${recovery.recoveryEvents}</div></div>
+        <div class="metric"><div class="k">Avg Scans</div><div class="v">${recovery.avgScansToRecovery}</div></div>
+      </section>
+      <div class="meta">Avg hours to recover: ${recovery.avgHoursToRecovery}</div>
+    </section>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -424,6 +742,9 @@ function formatFleetHtml(report) {
       </article>
     </section>
     ${executionBlock}
+    ${directoryBlock}
+    ${missingBlock}
+    ${recoveryBlock}
     <section class="table-wrap">
       <table>
         <thead>
@@ -452,7 +773,9 @@ function formatFleetReport(report, format = "text") {
     throw new Error(`Invalid fleet format: ${format}`);
   }
   if (normalized === "json") {
-    return JSON.stringify(report, null, 2);
+    const executionSummary = summarizeExecution(report.execution);
+    const payload = executionSummary ? { ...report, executionSummary } : report;
+    return JSON.stringify(payload, null, 2);
   }
   if (normalized === "markdown" || normalized === "md") {
     return formatFleetMarkdown(report);

@@ -7,6 +7,15 @@ const { loadConfig } = require("./config");
 const { runChecks } = require("./checks");
 const { createIgnoreMatcher } = require("./ignore");
 const { compareFindings, toPosixPath } = require("./utils");
+const { version: PACKAGE_VERSION } = require("../package.json");
+
+function toSafeNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return parsed;
+}
 
 function summarizeFindings(findings) {
   const summary = { total: findings.length, p0: 0, p1: 0, p2: 0 };
@@ -140,13 +149,27 @@ function listChangedPaths(rootPath, changedSince) {
 
 function scanRepository(targetPath, cliOptions = {}) {
   const start = Date.now();
+  const timing = {
+    walkMs: 0,
+    filterMs: 0,
+    readMs: 0,
+    ruleEvalMs: 0,
+    aggregateMs: 0,
+    cacheLoadMs: 0,
+    cacheSaveMs: 0,
+    totalMs: 0
+  };
   const rootPath = path.resolve(targetPath || process.cwd());
   const config = loadConfig(rootPath, cliOptions);
   const changedSince = cliOptions.changedSince ? String(cliOptions.changedSince).trim() : null;
   const cacheFile = cliOptions.cacheFile ? String(cliOptions.cacheFile).trim() : null;
   const configSignature = createConfigSignature(config);
 
+  const collectStartMs = Date.now();
   const { files: collectedFiles, skipped, truncated } = collectFiles(rootPath, config);
+  timing.walkMs = Date.now() - collectStartMs;
+
+  const filterStartMs = Date.now();
   const changedPaths = changedSince ? listChangedPaths(rootPath, changedSince) : null;
   const scopedFiles = changedPaths
     ? collectedFiles.filter((file) => changedPaths.has(toPosixPath(file.relPath)))
@@ -155,13 +178,16 @@ function scanRepository(targetPath, cliOptions = {}) {
   const files = resolvedCachePath
     ? scopedFiles.filter((file) => path.resolve(file.absPath) !== resolvedCachePath)
     : scopedFiles;
+  timing.filterMs = Date.now() - filterStartMs;
 
   let cacheLoadStatus = "disabled";
   let cacheEntries = {};
   if (cacheFile) {
+    const cacheLoadStartMs = Date.now();
     const loadedCache = loadScanCache(cacheFile, configSignature);
     cacheLoadStatus = loadedCache.status;
     cacheEntries = loadedCache.entries;
+    timing.cacheLoadMs = Date.now() - cacheLoadStartMs;
   }
 
   const activeFileCache = new Map();
@@ -181,10 +207,12 @@ function scanRepository(targetPath, cliOptions = {}) {
     }
   }
 
+  const checksStartMs = Date.now();
   const checkResult = runChecks(rootPath, files, config, {
     skipGlobalChecks: Boolean(changedSince),
     fileCache: cacheFile ? activeFileCache : null
   });
+  timing.aggregateMs += Date.now() - checksStartMs;
   const findings = (checkResult.findings || []).sort(compareFindings);
   const summary = summarizeFindings(findings);
   const score = calculateScore(summary);
@@ -199,6 +227,36 @@ function scanRepository(targetPath, cliOptions = {}) {
     analysis.cacheHitRate = total > 0 ? Number((hits / total).toFixed(3)) : 0;
     analysis.cacheStatus = cacheLoadStatus;
   }
+
+  const fileMetaByPath = new Map();
+  for (const file of files) {
+    const fromCheck = checkResult.fileResults && checkResult.fileResults[file.relPath];
+    const fromCache = activeFileCache.get(file.relPath);
+    const meta = fromCheck && fromCheck.meta ? fromCheck.meta : fromCache && fromCache.meta ? fromCache.meta : null;
+    if (meta) {
+      fileMetaByPath.set(file.relPath, meta);
+    }
+  }
+
+  const slowFilesRaw = Array.from(fileMetaByPath.entries())
+    .map(([relPath, meta]) => {
+      const fileTiming = meta && meta.timing ? meta.timing : {};
+      return {
+        file: relPath,
+        readMs: toSafeNumber(fileTiming.readMs, 0),
+        ruleEvalMs: toSafeNumber(fileTiming.ruleEvalMs, 0),
+        totalMs: toSafeNumber(fileTiming.totalMs, 0),
+        sizeBytes: toSafeNumber(meta && meta.sizeBytes, 0)
+      };
+    });
+
+  for (const item of slowFilesRaw) {
+    timing.readMs += item.readMs;
+    timing.ruleEvalMs += item.ruleEvalMs;
+  }
+  const slowFiles = slowFilesRaw
+    .sort((a, b) => b.totalMs - a.totalMs || b.readMs - a.readMs || a.file.localeCompare(b.file))
+    .slice(0, 10);
 
   if (cacheFile) {
     const nextCacheEntries = changedSince ? { ...cacheEntries } : {};
@@ -223,7 +281,9 @@ function scanRepository(targetPath, cliOptions = {}) {
       };
     }
     try {
+      const cacheSaveStartMs = Date.now();
       const cachePath = saveScanCache(cacheFile, configSignature, nextCacheEntries);
+      timing.cacheSaveMs = Date.now() - cacheSaveStartMs;
       if (analysis) {
         analysis.cacheFile = cachePath;
       }
@@ -234,12 +294,28 @@ function scanRepository(targetPath, cliOptions = {}) {
     }
   }
 
+  const durationMs = Date.now() - start;
+  timing.totalMs = durationMs;
+  if (analysis) {
+    analysis.hotspots = {
+      slowFiles
+    };
+    analysis.summary = {
+      filesPerSecond: files.length > 0 ? Number((files.length / Math.max(durationMs / 1000, 0.001)).toFixed(2)) : 0,
+      linesPerSecond:
+        toSafeNumber(analysis.linesScanned, 0) > 0
+          ? Number((toSafeNumber(analysis.linesScanned, 0) / Math.max(durationMs / 1000, 0.001)).toFixed(2))
+          : 0
+    };
+    analysis.timing = timing;
+  }
+
   return {
     tool: "repo-sleep-doctor",
-    version: "0.2.0",
+    version: PACKAGE_VERSION,
     rootPath,
     scannedAt: new Date().toISOString(),
-    durationMs: Date.now() - start,
+    durationMs,
     fileCount: files.length,
     collectedFileCount: collectedFiles.length,
     truncated,

@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;700&family=IBM+Plex+Mono:wght@500&family=Noto+Sans+SC:wght@400;500;700&display=swap");
+﻿@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;700&family=IBM+Plex+Mono:wght@500&family=Noto+Sans+SC:wght@400;500;700&display=swap");
 
 :root {
   --ink: #10233a;
@@ -329,6 +329,34 @@ h1 {
   color: var(--accent);
 }
 
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.proof-card {
+  border: 1px solid #cddbeb;
+  border-radius: 13px;
+  background: linear-gradient(165deg, #ffffff 0%, #f1f8ff 100%);
+  padding: 13px;
+}
+
+.proof-value {
+  display: block;
+  font-family: "Space Grotesk", "Noto Sans SC", sans-serif;
+  font-size: 22px;
+  color: #0d5f86;
+}
+
+.proof-label {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #4b6076;
+  line-height: 1.55;
+}
+
 .pill-list {
   margin-top: 12px;
   display: flex;
@@ -628,7 +656,7 @@ h1 {
 }
 
 .faq-grid details[open] summary::after {
-  content: "−";
+  content: "-";
 }
 
 .faq-grid p {
@@ -648,6 +676,40 @@ h1 {
   flex-wrap: wrap;
   color: #50667d;
   font-size: 13px;
+}
+
+.quick-cta {
+  margin-top: 24px;
+  border: 1px solid #b9cfe4;
+  border-radius: 16px;
+  background: linear-gradient(130deg, #fffdf7 0%, #eef8ff 58%, #e9fff8 100%);
+  box-shadow: 0 14px 28px rgba(16, 35, 58, 0.1);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  bottom: 12px;
+  z-index: 8;
+}
+
+.quick-cta strong {
+  display: block;
+  font-size: 16px;
+  color: #17344f;
+}
+
+.quick-cta p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #4e6379;
+}
+
+.quick-cta-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 [data-reveal] {
@@ -707,6 +769,10 @@ h1 {
     grid-template-columns: 1fr 1fr;
   }
 
+  .proof-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .usage-steps {
     grid-template-columns: 1fr;
   }
@@ -724,8 +790,14 @@ h1 {
 
   .cards-3,
   .cards-2,
-  .kpi-grid {
+  .kpi-grid,
+  .proof-grid {
     grid-template-columns: 1fr;
+  }
+
+  .quick-cta {
+    position: static;
+    padding: 12px;
   }
 
   .timeline-item {
@@ -737,3 +809,5 @@ h1 {
     display: none;
   }
 }
+
+

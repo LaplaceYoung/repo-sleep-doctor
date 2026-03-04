@@ -82,6 +82,13 @@ test("scanRepository exposes analysis stats for performance visibility", () => {
   assert.equal(typeof report.analysis.lineScanSkippedFiles, "number");
   assert.equal(typeof report.analysis.linesScanned, "number");
   assert.ok(report.analysis.textCandidates >= report.analysis.textFilesRead);
+  assert.equal(typeof report.analysis.timing, "object");
+  assert.equal(typeof report.analysis.timing.totalMs, "number");
+  assert.equal(typeof report.analysis.hotspots, "object");
+  assert.equal(Array.isArray(report.analysis.hotspots.slowFiles), true);
+  assert.equal(typeof report.analysis.summary, "object");
+  assert.equal(typeof report.analysis.summary.filesPerSecond, "number");
+  assert.equal(typeof report.analysis.summary.linesPerSecond, "number");
 });
 
 test("scanRepository reuses cache file across unchanged runs", () => {
@@ -471,6 +478,10 @@ test("cli fleet-scan aggregates repositories and writes repo artifacts", () => {
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.stats.repoCount, 2);
   assert.equal(parsed.execution.totalRepos, 2);
+  assert.equal(typeof parsed.executionSummary, "object");
+  assert.equal(typeof parsed.executionSummary.timing, "object");
+  assert.equal(typeof parsed.executionSummary.stability, "object");
+  assert.equal(typeof parsed.executionSummary.hotspots, "object");
   assert.equal(fs.readdirSync(historyDir).length, 2);
   assert.equal(fs.readdirSync(scanOutDir).length, 2);
 });
@@ -743,14 +754,22 @@ test("fleet report html includes execution telemetry panels", () => {
       {
         repo: "repo-a",
         latestScore: 95,
-        avgScore: 95,
-        scoreDelta: 0,
-        scans: 1,
-        latestSummary: { p0: 0, p1: 0, p2: 1 }
+        avgScore: 92,
+        scoreDelta: 3,
+        scans: 3,
+        latestSummary: { p0: 0, p1: 0, p2: 1 },
+        cadence: {
+          latestRisk: false,
+          previousRisk: true,
+          recoveredLatest: true,
+          regressionLatest: false,
+          recoveryEvents: [{ scansToRecovery: 1, hoursToRecovery: 12, recoveredAt: "2026-03-04T00:00:00.000Z" }]
+        }
       }
     ],
     topRules: [{ ruleId: "todo-comment", count: 1 }],
     execution: {
+      discoverRoot: "/workspace",
       failOn: "p1",
       continueOnError: true,
       totalRepos: 2,
@@ -761,14 +780,19 @@ test("fleet report html includes execution telemetry panels", () => {
       repoRuns: [
         {
           repoId: "repo-a",
+          path: "/workspace/team-a/repo-a",
           status: "passed",
           durationMs: 300,
+          failed: false,
           cache: { hitRate: 0.8, hits: 8, misses: 2 }
         },
         {
           repoId: "repo-b",
+          path: "/workspace/team-b/repo-b",
           status: "error",
           durationMs: 900,
+          failed: true,
+          error: "Invalid repository directory: /workspace/team-b/repo-b",
           cache: { hitRate: 0.2, hits: 2, misses: 8 }
         }
       ]
@@ -780,6 +804,35 @@ test("fleet report html includes execution telemetry panels", () => {
   assert.match(html, /Slowest Repositories/);
   assert.match(html, /Cache Hit Ranking/);
   assert.match(html, /Success Rate/);
+  assert.match(html, /P95 Repo/);
+  assert.match(html, /Directory Groups/);
+  assert.match(html, /Missing \/ Error Repositories/);
+  assert.match(html, /Recovery Cadence/);
+});
+
+test("fleet report includes recovery cadence metrics", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-recovery-"));
+  const historyPath = path.join(dir, "repo-a.history.json");
+  fs.writeFileSync(
+    historyPath,
+    JSON.stringify(
+      {
+        entries: [
+          { scannedAt: "2026-03-01T00:00:00.000Z", score: 90, summary: { p0: 1, p1: 0, p2: 0 }, ruleCounts: { "merge-marker": 1 } },
+          { scannedAt: "2026-03-02T00:00:00.000Z", score: 94, summary: { p0: 0, p1: 0, p2: 1 }, ruleCounts: { "todo-comment": 1 } }
+        ]
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+
+  const report = buildFleetReport([historyPath], { topRepos: 10, topRules: 10 });
+  assert.equal(report.recovery.recoveryEvents, 1);
+  assert.equal(report.recovery.recoveredLatestRepos, 1);
+  assert.equal(report.recovery.avgScansToRecovery, 1);
+  assert.equal(report.recovery.avgHoursToRecovery, 24);
 });
 
 test("cli fleet command outputs json report", () => {

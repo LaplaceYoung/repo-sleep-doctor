@@ -5,6 +5,7 @@ This folder contains a static multi-page promo site:
 - `index.html`: growth-oriented product landing page
 - `competitive.html`: usage and core-competitiveness page
 - `blueprint.html`: fission growth blueprint page
+- `en/`: full English site mirrors (`index.html`, `competitive.html`, `blueprint.html`)
 - `assets/`: shared styles and interactions
 
 Last updated: 2026-03-04 21:34 +08:00
@@ -20,6 +21,9 @@ Then open:
 - `http://localhost:3000/index.html`
 - `http://localhost:3000/competitive.html`
 - `http://localhost:3000/blueprint.html`
+- `http://localhost:3000/en/index.html`
+- `http://localhost:3000/en/competitive.html`
+- `http://localhost:3000/en/blueprint.html`
 
 ## GitHub Pages (recommended for OSS)
 

@@ -1,8 +1,17 @@
 const pathName = window.location.pathname.toLowerCase();
 
 for (const link of document.querySelectorAll(".nav-link")) {
-  const href = (link.getAttribute("href") || "").toLowerCase();
-  if (href && (pathName.endsWith(href) || (href.endsWith("index.html") && pathName.endsWith("/")))) {
+  const href = (link.getAttribute("href") || "").trim();
+  if (!href || href.startsWith("http") || href.startsWith("#")) {
+    continue;
+  }
+  let hrefPath = "";
+  try {
+    hrefPath = new URL(href, window.location.href).pathname.toLowerCase();
+  } catch (_error) {
+    continue;
+  }
+  if (pathName === hrefPath || (hrefPath.endsWith("/index.html") && (pathName === hrefPath || pathName === hrefPath.replace("/index.html", "/")))) {
     link.classList.add("active");
   }
 }

@@ -24,6 +24,7 @@ The scanner detects practical release blockers:
 - fleet dashboard that aggregates multiple repo history files
 - optional file-level cache for faster repeated scans
 - execution telemetry in fleet reports (success rate, errors, slow repos, cache ranking)
+- scan/fleet observability metrics (stage timing, slow file hotspots, throughput summary, execution stability)
 
 ## Installation
 
@@ -197,6 +198,8 @@ Rule IDs are documented in [`docs/rules.md`](docs/rules.md).
 
 Integration guide:
 - GitHub Actions: [`docs/guides/github-action.md`](docs/guides/github-action.md)
+- Report schema migration: [`docs/guides/report-schema-migration.md`](docs/guides/report-schema-migration.md)
+- Release notes: [`docs/releases/v0.3.0.md`](docs/releases/v0.3.0.md)
 
 ## Scoring
 

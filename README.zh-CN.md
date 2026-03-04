@@ -24,6 +24,7 @@ Language: [English](README.md) | 简体中文
 - Fleet 聚合仪表盘（跨仓库历史汇总）
 - 可选文件级缓存（重复扫描提速）
 - Fleet 执行遥测面板（成功率、错误仓、最慢仓、缓存命中排行）
+- 扫描/Fleet 可观测指标（阶段耗时、慢文件热点、吞吐摘要、执行稳定性）
 
 ## 安装
 
@@ -197,6 +198,8 @@ node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/
 
 集成指南：
 - GitHub Actions：[`docs/guides/github-action.md`](docs/guides/github-action.md)
+- 报告字段迁移：[`docs/guides/report-schema-migration.md`](docs/guides/report-schema-migration.md)
+- 版本发布说明：[`docs/releases/v0.3.0.md`](docs/releases/v0.3.0.md)
 
 ## 评分规则
 

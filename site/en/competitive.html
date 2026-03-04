@@ -1,0 +1,113 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Repo Sleep Doctor | Usage and Core Value</title>
+  <meta name="description" content="Usage-first guide for solo developers, CI teams, and multi-repo fleet governance." />
+  <meta property="og:title" content="Repo Sleep Doctor Usage" />
+  <meta property="og:description" content="Actionable usage paths with direct command-to-value mapping." />
+  <meta property="og:type" content="website" />
+  <link rel="canonical" href="./competitive.html" />
+  <link rel="alternate" hreflang="en" href="./competitive.html" />
+  <link rel="alternate" hreflang="zh-CN" href="../competitive.html" />
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="./index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-text">Repo Sleep Doctor</span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-link" href="./index.html">Home</a>
+        <a class="nav-link" href="./competitive.html">Usage</a>
+        <a class="nav-link" href="./blueprint.html">Blueprint</a>
+        <a class="nav-link" href="../../README.md">Docs</a>
+        <a class="nav-link" href="../competitive.html">中文</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" data-reveal data-delay="20">
+      <div class="hero-grid">
+        <div>
+          <div class="badge-row">
+            <span class="badge">How To Use</span>
+            <span class="badge">Action Driven</span>
+            <span class="badge">Production Ready</span>
+          </div>
+          <h1>Not “read a report”<br />but “trigger team action”</h1>
+          <p class="lead">Use one tool across local checks, CI gates, and fleet governance. Every workflow maps to a concrete command and outcome.</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="../../README.md">Full CLI Options</a>
+            <a class="btn secondary" href="./blueprint.html">See 30/60/90 Plan</a>
+          </div>
+        </div>
+        <aside class="stat-panel usage-panel">
+          <h2 class="stat-title">3 Outcomes</h2>
+          <ul class="stat-list">
+            <li class="stat-item"><span>Risk discovery speed</span><strong class="mono">&lt; 5 min / repo</strong></li>
+            <li class="stat-item"><span>Policy consistency</span><strong class="mono">Preset + Fail-On</strong></li>
+            <li class="stat-item"><span>Org visibility</span><strong class="mono">Fleet + Telemetry</strong></li>
+          </ul>
+          <div class="pulse-orb" aria-hidden="true"></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="70">
+      <div class="section-head">
+        <h2 class="section-title">Three Delivery Paths</h2>
+        <p class="section-subtitle">Pick a path by team maturity</p>
+      </div>
+      <div class="scene-tabs" role="tablist" aria-label="Scenario Tabs">
+        <button class="scene-btn active" data-tab-target="solo" type="button">Solo Dev</button>
+        <button class="scene-btn" data-tab-target="team" type="button">Team CI</button>
+        <button class="scene-btn" data-tab-target="fleet" type="button">Fleet Ops</button>
+      </div>
+
+      <div class="scene-panel active" data-tab-panel="solo">
+        <div class="cards-2">
+          <article class="card"><h3>Command</h3><pre class="code-block">node src/cli.js . --format html --out reports/scan.html --fail-on p1</pre></article>
+          <article class="card"><h3>Outcome</h3><p>Catch high-risk blockers before merge and reduce last-minute release rework.</p></article>
+        </div>
+      </div>
+      <div class="scene-panel" data-tab-panel="team">
+        <div class="cards-2">
+          <article class="card"><h3>Command</h3><pre class="code-block">node src/cli.js . --preset release --format sarif --out reports/scan.sarif --fail-on p1</pre></article>
+          <article class="card"><h3>Outcome</h3><p>Standardize quality gates across repos with the same policy and threshold.</p></article>
+        </div>
+      </div>
+      <div class="scene-panel" data-tab-panel="fleet">
+        <div class="cards-2">
+          <article class="card"><h3>Command</h3><pre class="code-block">node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
+node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --format html --out reports/fleet.html --continue-on-error --fail-on p1</pre></article>
+          <article class="card"><h3>Outcome</h3><p>Track failed repos, slow repos, and recovery cadence in one operational view.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="quick-cta" data-reveal data-delay="140">
+      <div>
+        <strong>Need a rollout path for your team?</strong>
+        <p>Start with CI gating, then scale to fleet observability.</p>
+      </div>
+      <div class="quick-cta-actions">
+        <a class="btn primary" href="../../README.md">Copy Commands</a>
+        <a class="btn secondary" href="./blueprint.html">Open Blueprint</a>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>© <span data-year></span> Repo Sleep Doctor</span>
+      <span>Usage-first delivery page for release risk execution.</span>
+    </footer>
+  </main>
+
+  <script src="../assets/app.js"></script>
+</body>
+</html>

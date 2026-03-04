@@ -1,0 +1,118 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Repo Sleep Doctor | Release Risk Governance for Teams</title>
+  <meta name="description" content="Turn repository scanning into a team-level release risk governance workflow with fleet intelligence and recovery cadence metrics." />
+  <meta property="og:title" content="Repo Sleep Doctor" />
+  <meta property="og:description" content="Release risk governance from single repo checks to fleet execution telemetry." />
+  <meta property="og:type" content="website" />
+  <link rel="canonical" href="./index.html" />
+  <link rel="alternate" hreflang="en" href="./index.html" />
+  <link rel="alternate" hreflang="zh-CN" href="../index.html" />
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="./index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-text">Repo Sleep Doctor</span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-link" href="./index.html">Home</a>
+        <a class="nav-link" href="./competitive.html">Usage</a>
+        <a class="nav-link" href="./blueprint.html">Blueprint</a>
+        <a class="nav-link" href="../../README.md">Docs</a>
+        <a class="nav-link" href="../index.html">中文</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" data-reveal data-delay="40">
+      <div class="hero-grid">
+        <div>
+          <div class="badge-row">
+            <span class="badge">Release Gate</span>
+            <span class="badge">Fleet Intelligence</span>
+            <span class="badge">Recovery Cadence</span>
+          </div>
+          <h1>Upgrade risk checks<br />into productized governance</h1>
+          <p class="lead">
+            Repo Sleep Doctor goes beyond one-time scan output. It connects risk detection, historical trends,
+            fleet aggregation, execution telemetry, and recovery cadence into one actionable workflow.
+          </p>
+          <div class="hero-actions">
+            <a class="btn primary" href="https://github.com/LaplaceYoung/repo-sleep-doctor" target="_blank" rel="noreferrer">View GitHub</a>
+            <a class="btn secondary" href="./competitive.html">Usage and Value</a>
+            <a class="btn secondary" href="./blueprint.html">Growth Blueprint</a>
+          </div>
+        </div>
+        <aside class="stat-panel">
+          <h2 class="stat-title">Capability Snapshot</h2>
+          <ul class="stat-list">
+            <li class="stat-item"><span>Governance scale</span><strong class="mono">Repo -&gt; Fleet -&gt; Org</strong></li>
+            <li class="stat-item"><span>Integration modes</span><strong class="mono">CLI / CI / Dashboard</strong></li>
+            <li class="stat-item"><span>Output formats</span><strong class="mono">Text / JSON / HTML / SARIF</strong></li>
+            <li class="stat-item"><span>First rollout time</span><strong class="mono">&lt; 30 min</strong></li>
+          </ul>
+          <div class="pill-list">
+            <span class="pill">Discover + Export</span>
+            <span class="pill">Execution Telemetry</span>
+            <span class="pill">Recovery Metrics</span>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="90">
+      <div class="section-head">
+        <h2 class="section-title">Proof Signals</h2>
+        <p class="section-subtitle">From claims to verifiable engineering assets</p>
+      </div>
+      <div class="proof-grid">
+        <article class="proof-card"><strong class="proof-value">32</strong><span class="proof-label">Automated tests passing in CI-ready workflow</span></article>
+        <article class="proof-card"><strong class="proof-value">5+</strong><span class="proof-label">Risk outputs across text, JSON, markdown, SARIF, HTML, JUnit</span></article>
+        <article class="proof-card"><strong class="proof-value">Fleet</strong><span class="proof-label">Cross-repo trend and error observability in one report</span></article>
+        <article class="proof-card"><strong class="proof-value">v0.3</strong><span class="proof-label">Timing and hotspot telemetry for execution visibility</span></article>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="130">
+      <div class="section-head">
+        <h2 class="section-title">Quickstart Commands</h2>
+        <p class="section-subtitle">Copy and run end-to-end in local or CI</p>
+      </div>
+      <pre class="code-block"># 1) Discover repositories and export list
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
+
+# 2) Generate Fleet governance dashboard
+node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format html --out reports/fleet.html --continue-on-error --fail-on p1
+
+# 3) Preview site
+npx serve site</pre>
+    </section>
+
+    <section class="quick-cta" data-reveal data-delay="180">
+      <div>
+        <strong>Ready to ship risk governance, not just scan output?</strong>
+        <p>Run your first fleet loop in minutes and share one executable report across teams.</p>
+      </div>
+      <div class="quick-cta-actions">
+        <a class="btn primary" href="https://github.com/LaplaceYoung/repo-sleep-doctor" target="_blank" rel="noreferrer">Get Started</a>
+        <a class="btn secondary" href="./competitive.html">See Usage Paths</a>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>© <span data-year></span> Repo Sleep Doctor</span>
+      <span>From scan output to growth-ready risk governance.</span>
+    </footer>
+  </main>
+
+  <script src="../assets/app.js"></script>
+</body>
+</html>

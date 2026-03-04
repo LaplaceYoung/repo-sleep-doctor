@@ -155,11 +155,17 @@ function createFileMeta() {
     isCodeFile: false,
     readmeContent: null,
     packageContent: null,
+    sizeBytes: 0,
     analysis: {
       textCandidates: 0,
       textFilesRead: 0,
       lineScanSkippedFiles: 0,
       linesScanned: 0
+    },
+    timing: {
+      readMs: 0,
+      ruleEvalMs: 0,
+      totalMs: 0
     }
   };
 }
@@ -230,12 +236,18 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
           textFilesRead: toSafeNumber(meta.analysis && meta.analysis.textFilesRead),
           lineScanSkippedFiles: toSafeNumber(meta.analysis && meta.analysis.lineScanSkippedFiles),
           linesScanned: toSafeNumber(meta.analysis && meta.analysis.linesScanned)
+        },
+        timing: {
+          readMs: toSafeNumber(meta.timing && meta.timing.readMs),
+          ruleEvalMs: toSafeNumber(meta.timing && meta.timing.ruleEvalMs),
+          totalMs: toSafeNumber(meta.timing && meta.timing.totalMs)
         }
       }
     };
   }
 
   for (const file of files) {
+    const fileStartMs = Date.now();
     const cached = fileCache ? fileCache.get(file.relPath) : null;
     if (cached && typeof cached === "object" && Array.isArray(cached.findings)) {
       cacheHits += 1;
@@ -273,6 +285,7 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
 
     const fileFindingStart = findings.length;
     const fileMeta = createFileMeta();
+    fileMeta.sizeBytes = toSafeNumber(file.sizeBytes);
 
     if (isTestFile(file.relPath)) {
       hasTests = true;
@@ -299,14 +312,18 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
     }
 
     if (!isTextCandidate(file, textExtensions) || file.sizeBytes > maxTextBytes) {
+      fileMeta.timing.totalMs = Date.now() - fileStartMs;
       captureFileResult(file, fileFindingStart, fileMeta);
       continue;
     }
     analysis.textCandidates += 1;
     fileMeta.analysis.textCandidates += 1;
 
+    const readStartMs = Date.now();
     const content = tryReadTextFile(file.absPath);
+    fileMeta.timing.readMs += Date.now() - readStartMs;
     if (content === null) {
+      fileMeta.timing.totalMs = Date.now() - fileStartMs;
       captureFileResult(file, fileFindingStart, fileMeta);
       continue;
     }
@@ -332,10 +349,12 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
     if (!needsLineScan) {
       analysis.lineScanSkippedFiles += 1;
       fileMeta.analysis.lineScanSkippedFiles += 1;
+      fileMeta.timing.totalMs = Date.now() - fileStartMs;
       captureFileResult(file, fileFindingStart, fileMeta);
       continue;
     }
 
+    const ruleEvalStartMs = Date.now();
     const lines = content.split(/\r?\n/);
     analysis.linesScanned += lines.length;
     fileMeta.analysis.linesScanned += lines.length;
@@ -401,6 +420,8 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
       }
     }
 
+    fileMeta.timing.ruleEvalMs += Date.now() - ruleEvalStartMs;
+    fileMeta.timing.totalMs = Date.now() - fileStartMs;
     captureFileResult(file, fileFindingStart, fileMeta);
   }
 

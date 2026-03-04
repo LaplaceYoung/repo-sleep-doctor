@@ -70,6 +70,27 @@ function formatAnalysisSummary(analysis) {
     parts.push(`cacheHitRate=${(hitRate * 100).toFixed(1)}%`);
   }
 
+  if (analysis.summary && typeof analysis.summary === "object") {
+    if (Number.isFinite(Number(analysis.summary.filesPerSecond))) {
+      parts.push(`filesPerSecond=${Number(analysis.summary.filesPerSecond).toFixed(2)}`);
+    }
+    if (Number.isFinite(Number(analysis.summary.linesPerSecond))) {
+      parts.push(`linesPerSecond=${Number(analysis.summary.linesPerSecond).toFixed(2)}`);
+    }
+  }
+
+  if (analysis.timing && typeof analysis.timing === "object") {
+    if (Number.isFinite(Number(analysis.timing.totalMs))) {
+      parts.push(`timingTotalMs=${Number(analysis.timing.totalMs)}`);
+    }
+    if (Number.isFinite(Number(analysis.timing.walkMs))) {
+      parts.push(`walkMs=${Number(analysis.timing.walkMs)}`);
+    }
+    if (Number.isFinite(Number(analysis.timing.ruleEvalMs))) {
+      parts.push(`ruleEvalMs=${Number(analysis.timing.ruleEvalMs)}`);
+    }
+  }
+
   return parts.join(" ");
 }
 

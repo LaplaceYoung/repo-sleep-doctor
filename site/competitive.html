@@ -1,13 +1,19 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Repo Sleep Doctor | 用法与核心竞争力</title>
+  <title>Repo Sleep Doctor | 用法与核心优势</title>
   <meta
     name="description"
-    content="Repo Sleep Doctor 用法与优势主题页：覆盖单仓扫描、团队门禁、Fleet 治理的完整落地路径。"
+    content="Repo Sleep Doctor 用法与优势页：覆盖个人开发、团队 CI、组织 Fleet 三类场景的落地路径与价值。"
   />
+  <meta property="og:title" content="Repo Sleep Doctor | 用法与核心优势" />
+  <meta property="og:description" content="按角色直接拿走命令：个人开发、团队 CI、组织 Fleet。" />
+  <meta property="og:type" content="website" />
+  <link rel="canonical" href="./competitive.html" />
+  <link rel="alternate" hreflang="zh-CN" href="./competitive.html" />
+  <link rel="alternate" hreflang="en" href="./en/competitive.html" />
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./assets/styles.css" />
 </head>
@@ -20,9 +26,10 @@
       </a>
       <nav class="nav-links" aria-label="主导航">
         <a class="nav-link" href="./index.html">首页</a>
-        <a class="nav-link" href="./competitive.html">用法优势</a>
+        <a class="nav-link" href="./competitive.html">用法与优势</a>
         <a class="nav-link" href="./blueprint.html">增长蓝图</a>
         <a class="nav-link" href="../README.md">Docs</a>
+        <a class="nav-link" href="./en/competitive.html">EN</a>
       </nav>
     </div>
   </header>
@@ -33,13 +40,13 @@
         <div>
           <div class="badge-row">
             <span class="badge">How To Use</span>
-            <span class="badge">Core Competitiveness</span>
+            <span class="badge">Action Driven</span>
             <span class="badge">Production Ready</span>
           </div>
-          <h1>不是“看报告”<br />而是“驱动行动”</h1>
+          <h1>不是“看一份报告”<br />而是“驱动团队动作”</h1>
           <p class="lead">
-            这页聚焦 Repo Sleep Doctor 的实际用法和核心竞争力：从单仓扫描到组织级 Fleet 治理，
-            每一步都可以直接落地到日常开发、CI 门禁和管理层复盘。
+            Repo Sleep Doctor 的核心价值是把检查结果转化为可执行动作。
+            从单仓扫描到 CI 门禁，再到 Fleet 治理看板，每一步都对应具体命令和业务收益。
           </p>
           <div class="hero-actions">
             <a class="btn primary" href="../README.md">查看完整参数</a>
@@ -50,7 +57,7 @@
           <h2 class="stat-title">3 个核心结果</h2>
           <ul class="stat-list">
             <li class="stat-item"><span>风险识别速度</span><strong class="mono">&lt; 5 min / repo</strong></li>
-            <li class="stat-item"><span>团队门禁统一</span><strong class="mono">Preset + Fail-On</strong></li>
+            <li class="stat-item"><span>团队规则统一</span><strong class="mono">Preset + Fail-On</strong></li>
             <li class="stat-item"><span>组织可见性</span><strong class="mono">Fleet + Telemetry</strong></li>
           </ul>
           <div class="pulse-orb" aria-hidden="true"></div>
@@ -61,23 +68,23 @@
     <section class="section" data-reveal data-delay="60">
       <div class="section-head">
         <h2 class="section-title">三步落地路径</h2>
-        <p class="section-subtitle">今天接入，今天出结果</p>
+        <p class="section-subtitle">今天接入，今天就有可复盘结果</p>
       </div>
       <div class="usage-steps">
         <article class="step-card">
           <div class="step-number">01</div>
           <h3>单仓扫描</h3>
-          <p>先拿到首份风险报告，快速确认当前仓库上线前风险面。</p>
+          <p>先拿到当前仓库的风险画像，快速识别 merge marker、潜在密钥、调试残留等发布阻塞项。</p>
         </article>
         <article class="step-card">
           <div class="step-number">02</div>
           <h3>团队门禁</h3>
-          <p>固定 preset 与 fail-on 阈值，把“质量标准”写入流水线。</p>
+          <p>固定 preset 与 fail-on 阈值，把质量标准写入流水线，降低反复返工和解释成本。</p>
         </article>
         <article class="step-card">
           <div class="step-number">03</div>
           <h3>Fleet 治理</h3>
-          <p>批量扫描多仓，输出趋势与执行遥测，形成管理动作闭环。</p>
+          <p>批量扫描多仓并追踪执行遥测，定位失败仓和恢复节奏，形成组织级治理闭环。</p>
         </article>
       </div>
     </section>
@@ -85,7 +92,7 @@
     <section class="section" data-reveal data-delay="90">
       <div class="section-head">
         <h2 class="section-title">场景切换演示</h2>
-        <p class="section-subtitle">切换不同团队场景，查看推荐命令与收益</p>
+        <p class="section-subtitle">根据角色直接拿走对应命令</p>
       </div>
       <div class="scene-tabs" role="tablist" aria-label="场景切换">
         <button class="scene-btn active" data-tab-target="solo" type="button">个人开发</button>
@@ -101,7 +108,7 @@
           </article>
           <article class="card">
             <h3>直接收益</h3>
-            <p>快速识别 merge marker、潜在密钥、debug 残留，让提测前风险检查自动化。</p>
+            <p>本地就能看到高风险项，提交前快速收敛问题，减少“线上前夕集中修复”。</p>
           </article>
         </div>
       </div>
@@ -114,7 +121,7 @@
           </article>
           <article class="card">
             <h3>直接收益</h3>
-            <p>标准化团队门禁策略，减少“同一问题反复出现”的沟通和回归成本。</p>
+            <p>标准化 CI 门禁，统一质量阈值，减少跨团队沟通摩擦与重复修复成本。</p>
           </article>
         </div>
       </div>
@@ -128,7 +135,7 @@ node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/
           </article>
           <article class="card">
             <h3>直接收益</h3>
-            <p>统一多个仓库治理视角，追踪最慢仓、失败仓和风险热点，提升组织交付稳定性。</p>
+            <p>统一多仓治理视角，快速识别失败仓、慢仓、风险热点和恢复节奏，支撑管理决策。</p>
           </article>
         </div>
       </div>
@@ -137,7 +144,7 @@ node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/
     <section class="section" data-reveal data-delay="120">
       <div class="section-head">
         <h2 class="section-title">核心竞争力</h2>
-        <p class="section-subtitle">不仅检测问题，更提供治理路径</p>
+        <p class="section-subtitle">不仅能发现问题，还能形成可复制治理机制</p>
       </div>
       <div class="cards-2">
         <article class="card">
@@ -174,19 +181,19 @@ node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/
           <div class="value-grid">
             <div class="value-chip">
               <strong>一体化</strong>
-              <span>扫描、历史、聚合、执行遥测在同一 CLI 体系内完成。</span>
+              <span>扫描、历史、聚合、执行遥测由同一 CLI 输出，便于集成与维护。</span>
             </div>
             <div class="value-chip">
               <strong>可运营</strong>
-              <span>支持导出仓库清单与批量编排，天然适配周期性治理任务。</span>
+              <span>支持仓库列表导出与批量编排，天然适配周期性治理任务。</span>
             </div>
             <div class="value-chip">
               <strong>可传播</strong>
-              <span>HTML 报告可直接用于周会复盘和跨团队协作沟通。</span>
+              <span>HTML 报告适合周报、复盘和跨团队沟通，降低信息转译成本。</span>
             </div>
             <div class="value-chip">
               <strong>可演进</strong>
-              <span>preset 与规则体系可持续扩展，适配不同团队成熟度。</span>
+              <span>Preset 与规则体系可持续扩展，适配不同团队成熟度。</span>
             </div>
           </div>
         </article>
@@ -201,16 +208,27 @@ node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/
       <div class="faq-grid">
         <details open>
           <summary>Q1: 首次接入建议从哪个阈值开始？</summary>
-          <p>建议先用 `--fail-on none` 采集基线，再过渡到 `p1`，最后根据团队成熟度收敛到 `p0` 或更严格策略。</p>
+          <p>先用 `--fail-on none` 建立基线，再逐步收敛到 `p1`；团队成熟后再考虑 `p0` 或更严策略。</p>
         </details>
         <details>
-          <summary>Q2: 多仓场景如何避免路径维护成本？</summary>
-          <p>使用 `--discover-root` + `--export-repos` 生成 `repos.txt`，将仓库发现与仓库扫描解耦，方便 CI 分阶段执行。</p>
+          <summary>Q2: 多仓场景如何降低路径维护成本？</summary>
+          <p>使用 `--discover-root` + `--export-repos` 生成 `repos.txt`，将“仓库发现”和“仓库扫描”解耦。</p>
         </details>
         <details>
           <summary>Q3: 如何向管理层展示治理效果？</summary>
-          <p>建议固定输出 Fleet HTML 与 execution log，每周关注失败仓数量、恢复时间与高频规则趋势。</p>
+          <p>固定输出 Fleet HTML 和 execution log，每周追踪失败仓数量、恢复时长与热点规则趋势。</p>
         </details>
+      </div>
+    </section>
+
+    <section class="quick-cta" data-reveal data-delay="190">
+      <div>
+        <strong>要先在哪个场景试点？</strong>
+        <p>建议先从“团队 CI”开始，再扩展到 Fleet 治理。</p>
+      </div>
+      <div class="quick-cta-actions">
+        <a class="btn primary" href="../README.md">复制参数模板</a>
+        <a class="btn secondary" href="./blueprint.html">查看 30/60/90 蓝图</a>
       </div>
     </section>
 
