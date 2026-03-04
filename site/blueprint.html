@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Repo Sleep Doctor | 裂变增长蓝图</title>
+  <meta
+    name="description"
+    content="Repo Sleep Doctor 增长蓝图：围绕接入模板、分享闭环、组织级指标构建可持续扩散的产品能力。"
+  />
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="./index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-text">Repo Sleep Doctor</span>
+      </a>
+      <nav class="nav-links" aria-label="主导航">
+        <a class="nav-link" href="./index.html">首页</a>
+        <a class="nav-link" href="./competitive.html">同类对照</a>
+        <a class="nav-link" href="./blueprint.html">增长蓝图</a>
+        <a class="nav-link" href="../README.zh-CN.md">中文文档</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" data-reveal data-delay="30">
+      <div class="hero-grid">
+        <div>
+          <div class="badge-row">
+            <span class="badge">Fission Blueprint</span>
+            <span class="badge">Ops to Product</span>
+            <span class="badge">OSS Growth</span>
+          </div>
+          <h1>从工具到产品<br />的增长蓝图</h1>
+          <p class="lead">
+            这页面向“增长负责人/产品负责人/技术负责人”三类角色，给出同一套可执行的裂变路径：
+            低成本接入 -> 可视化成果 -> 标准化复用 -> 外部传播。
+          </p>
+          <div class="hero-actions">
+            <a class="btn primary" href="https://github.com/LaplaceYoung/repo-sleep-doctor" target="_blank" rel="noreferrer">Clone 项目</a>
+            <a class="btn secondary" href="./competitive.html">查看能力对照</a>
+          </div>
+        </div>
+        <aside class="stat-panel">
+          <h2 class="stat-title">Blueprint North Star</h2>
+          <ul class="stat-list">
+            <li class="stat-item"><span>Activation</span><strong class="mono">首次接入 + 首次扫描</strong></li>
+            <li class="stat-item"><span>Retention</span><strong class="mono">周级趋势复盘</strong></li>
+            <li class="stat-item"><span>Referral</span><strong class="mono">报告分享 + 模板复用</strong></li>
+            <li class="stat-item"><span>Expansion</span><strong class="mono">单仓 -> Fleet -> 组织</strong></li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="60">
+      <div class="section-head">
+        <h2 class="section-title">角色驱动价值图</h2>
+        <p class="section-subtitle">同一产品，不同角色的增长触发点</p>
+      </div>
+      <div class="cards-3">
+        <article class="card">
+          <h3>技术负责人</h3>
+          <p>关心发布风险可控和门禁标准统一。核心交付是 `--fail-on` 策略 + CI 模板化接入包。</p>
+        </article>
+        <article class="card">
+          <h3>产品负责人</h3>
+          <p>关心质量问题是否影响上线节奏。核心交付是 Fleet 趋势和跨团队风险优先级看板。</p>
+        </article>
+        <article class="card">
+          <h3>增长负责人</h3>
+          <p>关心“能否复制传播”。核心交付是分享化页面、案例模板、可复用分发脚本。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="100">
+      <div class="section-head">
+        <h2 class="section-title">30 / 60 / 90 执行节奏</h2>
+        <p class="section-subtitle">每个阶段都对应产物、指标、扩散动作</p>
+      </div>
+      <div class="timeline">
+        <article class="timeline-item">
+          <div class="timeline-tag">30D</div>
+          <div>
+            <h3>标准化接入</h3>
+            <p>落地 `release/security` 双 preset，固定核心扫描参数，输出团队接入模板（CLI + Action 示例）。</p>
+          </div>
+        </article>
+        <article class="timeline-item">
+          <div class="timeline-tag">60D</div>
+          <div>
+            <h3>组织级可见性</h3>
+            <p>推广 `fleet-scan` 与历史趋势，沉淀每周 Fleet Digest；用执行遥测追踪慢仓与失败仓恢复节奏。</p>
+          </div>
+        </article>
+        <article class="timeline-item">
+          <div class="timeline-tag">90D</div>
+          <div>
+            <h3>对外传播与裂变</h3>
+            <p>发布案例页面和能力对照页，形成“可复制的治理故事”；通过社区渠道触发新增仓库接入。</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="130">
+      <div class="section-head">
+        <h2 class="section-title">增长型功能包</h2>
+        <p class="section-subtitle">建议作为下一批 release 的 feature set</p>
+      </div>
+      <div class="cards-2">
+        <article class="card">
+          <h3>Pack 1: Onboarding Kit</h3>
+          <p>
+            `repos.txt` 导出 + `--repos-file` 批处理 + 预设参数模板，
+            把“首次接入成本”降到最低，支持一线团队自助扩展。
+          </p>
+          <pre class="code-block">node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
+node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --format json --fail-on none</pre>
+        </article>
+        <article class="card">
+          <h3>Pack 2: Sharing Kit</h3>
+          <p>
+            Fleet HTML + 宣传页并行发布，生成对外展示入口，把“扫描结果”变成“可传播产品资产”。
+          </p>
+          <pre class="code-block">node src/cli.js fleet-scan repo-a repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format html --out reports/fleet.html
+npx serve site</pre>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="160">
+      <div class="section-head">
+        <h2 class="section-title">上线与分发渠道</h2>
+        <p class="section-subtitle">先预览上线，再进入生产域名</p>
+      </div>
+      <div class="cards-3">
+        <article class="card">
+          <h3>GitHub Pages</h3>
+          <p>适合 OSS 主站，仓库已有 workflow，可随 `site/` 更新自动发布。</p>
+        </article>
+        <article class="card">
+          <h3>Netlify Preview</h3>
+          <p>适合营销页快速迭代，支持预览链接用于评审与分享。</p>
+        </article>
+        <article class="card">
+          <h3>Vercel Preview</h3>
+          <p>适合零配置静态页上线，生成即时 URL，便于在社交渠道做 AB 对比。</p>
+        </article>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>© <span data-year></span> Repo Sleep Doctor</span>
+      <span>Blueprint for scalable release-risk product growth.</span>
+    </footer>
+  </main>
+
+  <script src="./assets/app.js"></script>
+</body>
+</html>

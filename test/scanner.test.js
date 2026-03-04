@@ -559,6 +559,62 @@ test("cli fleet-scan can auto-discover repositories from a root folder", () => {
   assert.equal(typeof parsed.execution.discoverRoot, "string");
 });
 
+test("cli fleet-scan can export discovered repositories for downstream runs", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-export-"));
+  const workspace = path.join(dir, "workspace");
+  const repoA = path.join(workspace, "group-a", "repo-a");
+  const repoB = path.join(workspace, "group-b", "repo-b");
+  const historyDir = path.join(dir, "history");
+  const reposFile = path.join(dir, "repos.txt");
+  writeFleetFixtureRepo(repoA);
+  writeFleetFixtureRepo(repoB);
+  initGitRepo(repoA);
+  initGitRepo(repoB);
+
+  const exportResult = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "fleet-scan",
+      "--discover-root",
+      workspace,
+      "--discover-depth",
+      "4",
+      "--export-repos",
+      reposFile,
+      "--export-only"
+    ],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+
+  assert.equal(exportResult.status, 0);
+  const expectedRepos = [path.resolve(repoA), path.resolve(repoB)].sort();
+  const exportedLines = fs
+    .readFileSync(reposFile, "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .sort();
+  assert.deepEqual(exportedLines, expectedRepos);
+
+  const stdoutLines = exportResult.stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .sort();
+  assert.deepEqual(stdoutLines, expectedRepos);
+
+  const scanResult = spawnSync(
+    process.execPath,
+    [cliPath, "fleet-scan", "--repos-file", reposFile, "--history-dir", historyDir, "--format", "json", "--fail-on", "none"],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+  assert.equal(scanResult.status, 0);
+  const parsed = JSON.parse(scanResult.stdout);
+  assert.equal(parsed.execution.totalRepos, 2);
+});
+
 test("cli fleet-scan writes execution log with repo-level run metrics", () => {
   const cliPath = path.join(__dirname, "..", "src", "cli.js");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-exec-log-"));

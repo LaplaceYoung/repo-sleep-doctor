@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Repo Sleep Doctor | 同类仓库能力对照</title>
+  <meta
+    name="description"
+    content="对照 Gitleaks、Trivy、Semgrep、markdownlint、todos 的公开能力，定义 Repo Sleep Doctor 的裂变型能力路线。"
+  />
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="./index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-text">Repo Sleep Doctor</span>
+      </a>
+      <nav class="nav-links" aria-label="主导航">
+        <a class="nav-link" href="./index.html">首页</a>
+        <a class="nav-link" href="./competitive.html">同类对照</a>
+        <a class="nav-link" href="./blueprint.html">增长蓝图</a>
+        <a class="nav-link" href="../README.md">Docs</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" data-reveal data-delay="30">
+      <div class="hero-grid">
+        <div>
+          <div class="badge-row">
+            <span class="badge">Benchmark</span>
+            <span class="badge">Capability Diff</span>
+            <span class="badge">Product Positioning</span>
+          </div>
+          <h1>同类仓库对照</h1>
+          <p class="lead">
+            目标不是“做另一个扫描器”，而是吸收成熟仓库已经验证有效的分发与协作机制，
+            再结合 Fleet 数据视角形成可扩散的产品能力闭环。
+          </p>
+        </div>
+        <aside class="stat-panel">
+          <h2 class="stat-title">对照方法</h2>
+          <ul class="stat-list">
+            <li class="stat-item"><span>信号来源</span><strong class="mono">官方 README</strong></li>
+            <li class="stat-item"><span>评估维度</span><strong class="mono">集成 / 输出 / 扩散</strong></li>
+            <li class="stat-item"><span>策略类型</span><strong class="mono">Adopt / Extend / Differentiate</strong></li>
+            <li class="stat-item"><span>落地产物</span><strong class="mono">Pages + CLI + CI</strong></li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="70">
+      <div class="section-head">
+        <h2 class="section-title">能力矩阵</h2>
+        <p class="section-subtitle">同类信号 -> 我们要继承什么 -> 我们怎么放大</p>
+      </div>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>同类仓库信号</th>
+            <th>我们继承</th>
+            <th>我们放大</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <strong>Gitleaks</strong>：强调 pre-commit、CI 与 SARIF 扫描落地。<br />
+              <a class="repo-link" href="https://github.com/gitleaks/gitleaks" target="_blank" rel="noreferrer">github.com/gitleaks/gitleaks</a>
+            </td>
+            <td>继续强化 `--format sarif` 与门禁阈值（`--fail-on`）。</td>
+            <td>把扫描阈值策略升级为“团队模板包”，降低跨仓复制成本。</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>Trivy</strong>：主打“开发者优先”并覆盖多平台集成。<br />
+              <a class="repo-link" href="https://github.com/aquasecurity/trivy" target="_blank" rel="noreferrer">github.com/aquasecurity/trivy</a>
+            </td>
+            <td>坚持 CLI-first + 多格式输出。</td>
+            <td>把 Fleet 报告和执行遥测做成可分享页面，进入管理层汇报链路。</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>Semgrep</strong>：强调可扩展规则与工作流整合。<br />
+              <a class="repo-link" href="https://github.com/semgrep/semgrep" target="_blank" rel="noreferrer">github.com/semgrep/semgrep</a>
+            </td>
+            <td>延展 preset 与规则体系表达。</td>
+            <td>上线“规则包市场化文案页面”，让外部团队能快速理解并复用。</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>markdownlint</strong>：规则驱动、文档化完整。<br />
+              <a class="repo-link" href="https://github.com/DavidAnson/markdownlint" target="_blank" rel="noreferrer">github.com/DavidAnson/markdownlint</a>
+            </td>
+            <td>保持 `docs/rules.md` 的可维护性。</td>
+            <td>把规则解释转成“业务场景话术”，增强产品销售/面试叙事能力。</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>todos</strong>：支持 json/csv/text/table 输出。<br />
+              <a class="repo-link" href="https://github.com/ianlewis/todos" target="_blank" rel="noreferrer">github.com/ianlewis/todos</a>
+            </td>
+            <td>保留多格式输出兼容能力。</td>
+            <td>新增“导出仓库清单 + Fleet 批处理”编排，形成运营流程标准件。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section" data-reveal data-delay="110">
+      <div class="section-head">
+        <h2 class="section-title">能力裂变路线</h2>
+        <p class="section-subtitle">Adopt -> Extend -> Differentiate</p>
+      </div>
+      <div class="timeline">
+        <article class="timeline-item">
+          <div class="timeline-tag">ADOPT</div>
+          <div>
+            <h3>接入层标准化</h3>
+            <p>对齐同类项目的 CI / pre-commit / SARIF 常规接入姿势，确保上手路径一致、学习成本可预期。</p>
+          </div>
+        </article>
+        <article class="timeline-item">
+          <div class="timeline-tag">EXTEND</div>
+          <div>
+            <h3>Fleet 组织视角</h3>
+            <p>在单仓扫描之上叠加多仓执行遥测、历史趋势和风险优先级，给出治理动作而不只是检测结果。</p>
+          </div>
+        </article>
+        <article class="timeline-item">
+          <div class="timeline-tag">DIFF</div>
+          <div>
+            <h3>增长型传播层</h3>
+            <p>把报告、模板、案例页面化，形成可被转发和复用的产品资产，推动团队内外自然扩散。</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" data-reveal data-delay="140">
+      <div class="section-head">
+        <h2 class="section-title">下一步产品化动作</h2>
+        <p class="section-subtitle">直接挂到 roadmap 的可执行项</p>
+      </div>
+      <div class="cards-3">
+        <article class="card">
+          <h3>Rules Storybook</h3>
+          <p>为每条规则补“场景-风险-修复”三段式文案，变成对外可讲、对内可训的知识资产。</p>
+        </article>
+        <article class="card">
+          <h3>Fleet Benchmark Pack</h3>
+          <p>把不同团队仓库的基线分层输出，形成季度对标挑战赛，驱动内部自传播。</p>
+        </article>
+        <article class="card">
+          <h3>Shareable Exec Digest</h3>
+          <p>把执行遥测摘要做成可嵌入周报的模块，缩短“发现问题”到“推动决策”的链路。</p>
+        </article>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>© <span data-year></span> Repo Sleep Doctor</span>
+      <span>Competitive signals converted into product growth assets.</span>
+    </footer>
+  </main>
+
+  <script src="./assets/app.js"></script>
+</body>
+</html>

@@ -54,6 +54,8 @@ Fleet-scan options:
   --discover-depth <number>                 Max directory depth for discovery (default: 3)
   --discover-max <number>                   Max repositories discovered per root (default: 300)
   --discover-hidden                         Include hidden directories during discovery
+  --export-repos <file>                     Write resolved repository list to newline-delimited file
+  --export-only                             Only resolve/export repositories, skip scanning
   --history-dir <dir>                       Directory for per-repo history files (default: reports/fleet-history)
   --history-limit <number>                  Keep only latest N history entries per repo (default: 120)
   --format <text|json|markdown|html>        Fleet report format (default: text)
@@ -416,6 +418,13 @@ function extensionForFormat(format) {
   return "txt";
 }
 
+function formatPathList(paths) {
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return "";
+  }
+  return `${paths.join("\n")}\n`;
+}
+
 function parseFleetScanArgs(argv) {
   const args = [...argv];
   if (args[0] === "fleet-scan") {
@@ -429,6 +438,8 @@ function parseFleetScanArgs(argv) {
     discoverDepth: 3,
     discoverMax: 300,
     discoverHidden: false,
+    exportReposFile: null,
+    exportOnly: false,
     historyDir: path.join("reports", "fleet-history"),
     historyLimit: DEFAULT_HISTORY_LIMIT,
     format: "text",
@@ -463,6 +474,10 @@ function parseFleetScanArgs(argv) {
       options.discoverHidden = true;
       continue;
     }
+    if (token === "--export-only") {
+      options.exportOnly = true;
+      continue;
+    }
     if (token === "--continue-on-error") {
       options.continueOnError = true;
       continue;
@@ -486,6 +501,11 @@ function parseFleetScanArgs(argv) {
       }
       if (token === "--discover-max") {
         options.discoverMax = Number(requireOptionValue(args, index, token));
+        index += 1;
+        continue;
+      }
+      if (token === "--export-repos") {
+        options.exportReposFile = requireOptionValue(args, index, token);
         index += 1;
         continue;
       }
@@ -653,6 +673,15 @@ function main() {
       const options = parseFleetScanArgs(argv);
       if (options.help) {
         printHelp();
+        return;
+      }
+
+      const repoListOutput = formatPathList(options.repoPaths);
+      if (options.exportReposFile) {
+        writeTextFile(options.exportReposFile, repoListOutput);
+      }
+      if (options.exportOnly) {
+        process.stdout.write(repoListOutput);
         return;
       }
 

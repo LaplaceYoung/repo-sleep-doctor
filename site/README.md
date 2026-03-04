@@ -1,12 +1,23 @@
 # Site Deployment Notes
 
-This folder contains a static landing page (`index.html`) for product promotion.
+This folder contains a static multi-page promo site:
+
+- `index.html`: growth-oriented product landing page
+- `competitive.html`: benchmark and capability-diff page
+- `blueprint.html`: fission growth blueprint page
+- `assets/`: shared styles and interactions
 
 ## Local Preview
 
 ```bash
 npx serve site
 ```
+
+Then open:
+
+- `http://localhost:3000/index.html`
+- `http://localhost:3000/competitive.html`
+- `http://localhost:3000/blueprint.html`
 
 ## GitHub Pages (recommended for OSS)
 

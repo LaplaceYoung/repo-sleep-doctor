@@ -1,262 +1,174 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Repo Sleep Doctor | 发布风险扫描与 Fleet 看板</title>
-  <style>
-    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap");
-    :root {
-      --ink: #10243a;
-      --muted: #4f657a;
-      --line: #c8d8e8;
-      --bg: #f2f9ff;
-      --card: #ffffff;
-      --blue: #0a6b94;
-      --cyan: #2c93b7;
-      --orange: #ea8a2d;
-      --good: #0f8d66;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      color: var(--ink);
-      font-family: "Noto Sans SC", "Segoe UI", sans-serif;
-      background:
-        radial-gradient(circle at 10% 0%, #daf1ff 0%, transparent 36%),
-        radial-gradient(circle at 92% 10%, #ffe7d0 0%, transparent 28%),
-        var(--bg);
-    }
-    .wrap {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 30px 18px 54px;
-    }
-    .top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .logo {
-      font: 700 20px/1 "Space Grotesk", "Noto Sans SC", sans-serif;
-      letter-spacing: 0.02em;
-    }
-    .badge {
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 6px 11px;
-      font-size: 12px;
-      color: var(--muted);
-      background: rgba(255, 255, 255, 0.86);
-    }
-    .hero {
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      padding: 26px;
-      background: linear-gradient(145deg, #ffffff 0%, #f6fbff 62%, #fff4e8 100%);
-      box-shadow: 0 16px 40px rgba(9, 33, 60, 0.12);
-      overflow: hidden;
-      position: relative;
-    }
-    .hero::after {
-      content: "";
-      position: absolute;
-      width: 220px;
-      height: 220px;
-      right: -70px;
-      top: -70px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(44, 147, 183, 0.2) 0%, rgba(44, 147, 183, 0) 70%);
-      pointer-events: none;
-    }
-    .hero h1 {
-      margin: 0;
-      font: 700 clamp(32px, 5.2vw, 54px)/1.06 "Space Grotesk", "Noto Sans SC", sans-serif;
-      max-width: 700px;
-    }
-    .hero p {
-      margin: 12px 0 0;
-      max-width: 760px;
-      color: var(--muted);
-      font-size: 17px;
-      line-height: 1.64;
-    }
-    .actions {
-      margin-top: 18px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .btn {
-      text-decoration: none;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px 15px;
-      font-weight: 700;
-      font-size: 14px;
-      transition: transform .16s ease, box-shadow .16s ease;
-    }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(14, 35, 60, 0.12); }
-    .btn-primary { background: var(--blue); color: #fff; border-color: #085678; }
-    .btn-light { background: #fff; color: var(--ink); }
-    .quick {
-      margin-top: 18px;
-      border-radius: 14px;
-      padding: 13px 14px;
-      background: #0e1d30;
-      color: #dce8f7;
-      font: 500 12px/1.65 Consolas, "JetBrains Mono", monospace;
-      overflow: auto;
-    }
-    .section-title {
-      margin: 32px 0 10px;
-      font: 700 24px/1.2 "Space Grotesk", "Noto Sans SC", sans-serif;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-    .card {
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 16px;
-      background: var(--card);
-    }
-    .card h3 {
-      margin: 0 0 7px;
-      font-size: 16px;
-    }
-    .card p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.58;
-      font-size: 14px;
-    }
-    .kpis {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-    }
-    .kpi {
-      border: 1px solid var(--line);
-      background: #fff;
-      border-radius: 12px;
-      padding: 12px;
-    }
-    .kpi .label {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-    }
-    .kpi .value {
-      margin-top: 4px;
-      color: var(--blue);
-      font: 700 28px/1 "Space Grotesk", sans-serif;
-    }
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-    .step-tag {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: .02em;
-    }
-    .t1 { background: var(--good); }
-    .t2 { background: var(--blue); }
-    .t3 { background: var(--orange); }
-    footer {
-      margin-top: 26px;
-      color: var(--muted);
-      font-size: 13px;
-      text-align: center;
-    }
-    @media (max-width: 920px) {
-      .grid, .kpis, .steps { grid-template-columns: 1fr 1fr; }
-    }
-    @media (max-width: 680px) {
-      .grid, .kpis, .steps { grid-template-columns: 1fr; }
-      .hero p { font-size: 15px; }
-    }
-  </style>
+  <title>Repo Sleep Doctor | Fleet 发布风险与增长引擎</title>
+  <meta
+    name="description"
+    content="Repo Sleep Doctor 宣传站：参考 Gitleaks、Trivy、Semgrep 等仓库实践，打造可裂变的发布风险治理产品能力。"
+  />
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./assets/styles.css" />
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="logo">Repo Sleep Doctor</div>
-      <div class="badge">Release Risk Scanner + Fleet Analytics</div>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="./index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-text">Repo Sleep Doctor</span>
+      </a>
+      <nav class="nav-links" aria-label="主导航">
+        <a class="nav-link" href="./index.html">首页</a>
+        <a class="nav-link" href="./competitive.html">同类对照</a>
+        <a class="nav-link" href="./blueprint.html">增长蓝图</a>
+        <a class="nav-link" href="../README.md">Docs</a>
+      </nav>
     </div>
+  </header>
 
-    <section class="hero">
-      <h1>上线前，不靠感觉；
-        <br />用数据看见仓库风险</h1>
-      <p>
-        Repo Sleep Doctor 面向工程团队的发布守门场景：自动扫描冲突标记、潜在密钥、调试残留、文档与脚本缺口，
-        并输出单仓报告与跨仓 Fleet 看板，支持缓存加速与趋势跟踪。
-      </p>
-      <div class="actions">
-        <a class="btn btn-primary" href="https://github.com/LaplaceYoung/repo-sleep-doctor" target="_blank" rel="noreferrer">查看 GitHub 仓库</a>
-        <a class="btn btn-light" href="../README.zh-CN.md">阅读中文文档</a>
+  <main class="container">
+    <section class="hero" data-reveal data-delay="40">
+      <div class="hero-grid">
+        <div>
+          <div class="badge-row">
+            <span class="badge">Release Gate</span>
+            <span class="badge">Fleet Intelligence</span>
+            <span class="badge">Growth Loop Ready</span>
+          </div>
+          <h1>把扫描工具<br />做成会自增长的产品</h1>
+          <p class="lead">
+            Repo Sleep Doctor 不只给一份扫描报告，而是把多仓风险数据、执行遥测、模板化落地路径打包成增长资产。
+            参考同类仓库的成熟能力后，我们将产品定位升级为“发布稳定性增长引擎”。
+          </p>
+          <div class="hero-actions">
+            <a class="btn primary" href="https://github.com/LaplaceYoung/repo-sleep-doctor" target="_blank" rel="noreferrer">查看 GitHub</a>
+            <a class="btn secondary" href="./blueprint.html">查看裂变设计</a>
+            <a class="btn secondary" href="./competitive.html">查看同类拆解</a>
+          </div>
+        </div>
+        <aside class="stat-panel">
+          <h2 class="stat-title">裂变能力快照</h2>
+          <ul class="stat-list">
+            <li class="stat-item">
+              <span>报告扩散半径</span>
+              <strong class="mono">Repo -> Fleet -> Org</strong>
+            </li>
+            <li class="stat-item">
+              <span>可复用落地包</span>
+              <strong class="mono">CI / Hook / Dashboard</strong>
+            </li>
+            <li class="stat-item">
+              <span>对标样本</span>
+              <strong class="mono">5 OSS Repos</strong>
+            </li>
+            <li class="stat-item">
+              <span>标准化接入时间</span>
+              <strong class="mono">&lt; 30 min</strong>
+            </li>
+          </ul>
+          <div class="pill-list">
+            <span class="pill">JSON / HTML / SARIF / JUnit</span>
+            <span class="pill">Discover + Export</span>
+            <span class="pill">Execution Telemetry</span>
+          </div>
+        </aside>
       </div>
-      <pre class="quick"># 单仓扫描
-node src/cli.js . --format html --out reports/scan.html --cache-file reports/scan.cache.json --fail-on p1
-
-# 多仓扫描 + Fleet 汇总
-node src/cli.js fleet-scan ../repo-a ../repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format html --out reports/fleet.html --preset release --cache-dir reports/fleet-cache --fail-on p1</pre>
     </section>
 
-    <h2 class="section-title">核心能力</h2>
-    <section class="grid">
-      <article class="card">
-        <h3>发布阻断识别</h3>
-        <p>P0/P1/P2 分级输出风险，优先处理真正影响上线的关键问题，降低“带病发布”概率。</p>
-      </article>
-      <article class="card">
-        <h3>趋势与动量可视化</h3>
-        <p>HTML 报告内置分数趋势、规则动量、热点文件视图，帮助快速定位风险聚集点。</p>
-      </article>
-      <article class="card">
-        <h3>组织级 Fleet 汇总</h3>
-        <p>一条命令扫描多仓、写入历史、聚合看板，形成跨仓库风险排行榜和治理优先级。</p>
-      </article>
+    <section class="section" data-reveal data-delay="80">
+      <div class="section-head">
+        <h2 class="section-title">裂变增长回路</h2>
+        <p class="section-subtitle">从“单次扫描”升级到“组织持续传播”</p>
+      </div>
+      <div class="cards-3">
+        <article class="card">
+          <h3>Loop A: 扫描即内容</h3>
+          <p>把 Fleet HTML 报告变成可分享链接，周会/复盘中自然传播，带动团队内自发接入。</p>
+        </article>
+        <article class="card">
+          <h3>Loop B: 模板即复制</h3>
+          <p>输出“仓库接入模板包”（Action、参数预设、失败阈值），让新团队一键复用。</p>
+        </article>
+        <article class="card">
+          <h3>Loop C: 对照即升级</h3>
+          <p>引入同类仓库能力对照面板，明确“下一步该补什么”，推动功能迭代和外部背书。</p>
+        </article>
+      </div>
     </section>
 
-    <h2 class="section-title">上线指标</h2>
-    <section class="kpis">
-      <div class="kpi"><div class="label">首次接入</div><div class="value">&lt;30m</div></div>
-      <div class="kpi"><div class="label">报告格式</div><div class="value">6+</div></div>
-      <div class="kpi"><div class="label">缓存加速</div><div class="value">30%+</div></div>
-      <div class="kpi"><div class="label">跨仓可见性</div><div class="value">Fleet</div></div>
+    <section class="section" data-reveal data-delay="120">
+      <div class="section-head">
+        <h2 class="section-title">增长型能力指标</h2>
+        <p class="section-subtitle">示例目标值，驱动产品化运营</p>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Weekly 新增仓库</div>
+          <div class="kpi-value" data-count-to="12" data-prefix="+" data-suffix="" data-duration="1200">+0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Fleet 报告分享率</div>
+          <div class="kpi-value" data-count-to="68" data-suffix="%" data-duration="1200">0%</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">模板复用次数</div>
+          <div class="kpi-value" data-count-to="24" data-prefix="x" data-duration="1200">x0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">发现到修复周期</div>
+          <div class="kpi-value" data-count-to="3" data-suffix="d" data-duration="1200">0d</div>
+        </div>
+      </div>
     </section>
 
-    <h2 class="section-title">30/60/90 执行节奏</h2>
-    <section class="steps">
-      <article class="card">
-        <span class="step-tag t1">30 DAYS</span>
-        <h3>扫描标准化</h3>
-        <p>建立 release/security 双预设门禁，统一团队扫描参数和 CI 失败阈值。</p>
-      </article>
-      <article class="card">
-        <span class="step-tag t2">60 DAYS</span>
-        <h3>组织看板上线</h3>
-        <p>接入 fleet-scan，多仓历史自动汇总，输出风险仓库排名与规则热度趋势。</p>
-      </article>
-      <article class="card">
-        <span class="step-tag t3">90 DAYS</span>
-        <h3>增长与推流</h3>
-        <p>基于 GitHub Pages 持续发布示例看板与版本升级解读，推动社区复用与裂变传播。</p>
-      </article>
+    <section class="section" data-reveal data-delay="150">
+      <div class="section-head">
+        <h2 class="section-title">对照样本与借鉴点</h2>
+        <p class="section-subtitle">只引用官方仓库说明中的公开能力</p>
+      </div>
+      <div class="cards-2">
+        <article class="card">
+          <h3>安全扫描产品化路径</h3>
+          <p>
+            借鉴 <a class="repo-link" href="https://github.com/gitleaks/gitleaks" target="_blank" rel="noreferrer">Gitleaks</a> 的 pre-commit 与 CI 场景、
+            <a class="repo-link" href="https://github.com/aquasecurity/trivy" target="_blank" rel="noreferrer">Trivy</a> 的多平台集成表达，
+            把 Repo Sleep Doctor 的输出从 CLI 扩展到协作流程。
+          </p>
+        </article>
+        <article class="card">
+          <h3>规则生态与扩散机制</h3>
+          <p>
+            参考 <a class="repo-link" href="https://github.com/semgrep/semgrep" target="_blank" rel="noreferrer">Semgrep</a> 的规则驱动实践、
+            <a class="repo-link" href="https://github.com/DavidAnson/markdownlint" target="_blank" rel="noreferrer">markdownlint</a> 的规则化结构、
+            <a class="repo-link" href="https://github.com/ianlewis/todos" target="_blank" rel="noreferrer">todos</a> 的多格式输出，
+            构建“规则包 + 可分享报告 + 接入模板”的增长飞轮。
+          </p>
+        </article>
+      </div>
     </section>
 
-    <footer>© 2026 Repo Sleep Doctor · Built for release confidence and fleet-scale visibility.</footer>
-  </div>
+    <section class="section" data-reveal data-delay="180">
+      <div class="section-head">
+        <h2 class="section-title">一键演示命令</h2>
+        <p class="section-subtitle">可直接复制到 CI 或本地演示</p>
+      </div>
+      <pre class="code-block"># 1) 发现并导出仓库清单
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
+
+# 2) 批量扫描并输出 Fleet 看板
+node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format html --out reports/fleet.html --continue-on-error --fail-on p1
+
+# 3) 用 site/ 做宣传页发布目录
+npx serve site</pre>
+    </section>
+
+    <footer class="foot">
+      <span>© <span data-year></span> Repo Sleep Doctor</span>
+      <span>From scanner utility to growth-ready product surface.</span>
+    </footer>
+  </main>
+
+  <script src="./assets/app.js"></script>
 </body>
 </html>

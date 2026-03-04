@@ -71,6 +71,9 @@ node src/cli.js fleet-scan ../repo-a ../repo-b --history-dir reports/fleet-histo
 
 # auto-discover git repositories from a workspace root and write execution log
 node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --history-dir reports/fleet-history --format json --execution-log reports/fleet.execution.json --continue-on-error --fail-on p1
+
+# export discovered repositories for downstream CI workflows
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
 ```
 
 ## CLI Usage
@@ -112,6 +115,8 @@ Fleet-scan options:
 - `--discover-depth <number>` max directory depth for discovery (default 3)
 - `--discover-max <number>` max discovered repositories per root (default 300)
 - `--discover-hidden` include hidden directories during discovery
+- `--export-repos <file>` write resolved repository list to newline-delimited file
+- `--export-only` only resolve/export repositories and skip scanning
 - `--history-dir <dir>` per-repo history output directory (default `reports/fleet-history`)
 - `--history-limit <number>` keep latest N history entries per repo (default 120)
 - `--format <text|json|markdown|html>` fleet output format, default `text`
@@ -154,6 +159,10 @@ node src/cli.js fleet-scan repo-a repo-b --history-dir reports/fleet-history --s
 
 # discover-mode fleet scan with resilient execution
 node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --history-dir reports/fleet-history --format json --execution-log reports/fleet.execution.json --continue-on-error --fail-on p1
+
+# discover + export repository list, then consume it in a later step
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
+node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --format json --fail-on none
 ```
 
 ## Config

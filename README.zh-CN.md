@@ -71,6 +71,9 @@ node src/cli.js fleet-scan ../repo-a ../repo-b --history-dir reports/fleet-histo
 
 # 从工作区根目录自动发现 Git 仓库，并输出执行日志
 node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --history-dir reports/fleet-history --format json --execution-log reports/fleet.execution.json --continue-on-error --fail-on p1
+
+# 仅导出发现到的仓库清单，供后续 CI 阶段复用
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
 ```
 
 ## CLI 用法
@@ -112,6 +115,8 @@ Fleet-scan 参数：
 - `--discover-depth <number>` 自动发现最大目录深度（默认 3）
 - `--discover-max <number>` 每个根目录最多发现仓库数量（默认 300）
 - `--discover-hidden` 自动发现时包含隐藏目录
+- `--export-repos <file>` 将最终仓库列表写入换行分隔文件
+- `--export-only` 仅解析/导出仓库列表，不执行扫描
 - `--history-dir <dir>` 每个仓库历史文件输出目录（默认 `reports/fleet-history`）
 - `--history-limit <number>` 每个仓库仅保留最近 N 条历史（默认 120）
 - `--format <text|json|markdown|html>` fleet 输出格式，默认 `text`
@@ -154,6 +159,10 @@ node src/cli.js fleet-scan repo-a repo-b --history-dir reports/fleet-history --s
 
 # 自动发现模式 + 容错执行日志
 node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --history-dir reports/fleet-history --format json --execution-log reports/fleet.execution.json --continue-on-error --fail-on p1
+
+# 自动发现 + 导出仓库清单，并在后续步骤复用
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --export-repos reports/repos.txt --export-only
+node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --format json --fail-on none
 ```
 
 ## 配置
