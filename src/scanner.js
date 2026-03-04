@@ -6,6 +6,7 @@ const { createConfigSignature, fileSignature, loadScanCache, saveScanCache } = r
 const { loadConfig } = require("./config");
 const { runChecks } = require("./checks");
 const { createIgnoreMatcher } = require("./ignore");
+const { verifySecretFindings } = require("./secret-verify");
 const { compareFindings, toPosixPath } = require("./utils");
 const { version: PACKAGE_VERSION } = require("../package.json");
 
@@ -213,7 +214,15 @@ function scanRepository(targetPath, cliOptions = {}) {
     fileCache: cacheFile ? activeFileCache : null
   });
   timing.aggregateMs += Date.now() - checksStartMs;
-  const findings = (checkResult.findings || []).sort(compareFindings);
+  const rawFindings = (checkResult.findings || []).sort(compareFindings);
+  const verified = verifySecretFindings(rawFindings, {
+    enabled: Boolean(cliOptions.verifySecrets),
+    provider: cliOptions.verifyProvider || "auto",
+    timeoutMs: cliOptions.verifyTimeoutMs,
+    maxCount: cliOptions.verifyMax || 20,
+    safeMode: cliOptions.verifySafeMode !== undefined ? Boolean(cliOptions.verifySafeMode) : true
+  });
+  const findings = verified.findings;
   const summary = summarizeFindings(findings);
   const score = calculateScore(summary);
 
@@ -321,13 +330,24 @@ function scanRepository(targetPath, cliOptions = {}) {
     truncated,
     skipped,
     summary,
+    verificationSummary: {
+      verifiedSecrets: verified.stats.verifiedSecrets,
+      invalidSecrets: verified.stats.invalidSecrets,
+      unverifiedSecrets: verified.stats.unverifiedSecrets,
+      skippedSecrets: verified.stats.skippedSecrets
+    },
     score,
     configPath: config.configPath,
     config: {
       useGitIgnore: config.useGitIgnore,
       preset: config.preset || null,
       changedSince,
-      cacheFile: cacheFile ? path.resolve(cacheFile) : null
+      cacheFile: cacheFile ? path.resolve(cacheFile) : null,
+      verifySecrets: Boolean(cliOptions.verifySecrets),
+      verifyProvider: cliOptions.verifyProvider || "auto",
+      verifyTimeoutMs: cliOptions.verifyTimeoutMs || null,
+      verifyMax: cliOptions.verifyMax || null,
+      verifySafeMode: cliOptions.verifySafeMode !== undefined ? Boolean(cliOptions.verifySafeMode) : true
     },
     analysis,
     findings

@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { version: PACKAGE_VERSION } = require("../package.json");
 
 const DEFAULT_HISTORY_LIMIT = 120;
 
@@ -77,7 +78,7 @@ function appendHistory(historyPath, entry, limit = DEFAULT_HISTORY_LIMIT) {
     JSON.stringify(
       {
         tool: "repo-sleep-doctor",
-        version: "0.2.0",
+        version: PACKAGE_VERSION,
         entries: nextEntries
       },
       null,

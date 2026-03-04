@@ -450,6 +450,19 @@ function formatFleetText(report) {
       `- recoveryEvents=${report.recovery.recoveryEvents} avgScansToRecovery=${report.recovery.avgScansToRecovery} avgHoursToRecovery=${report.recovery.avgHoursToRecovery}`
     );
   }
+  if (report.ownership) {
+    lines.push("");
+    lines.push("Ownership:");
+    lines.push(`- orphanFindings=${safeNumber(report.ownership.orphanFindings, 0)}`);
+    for (const owner of (report.ownership.topOwners || []).slice(0, 5)) {
+      lines.push(`- ${owner.owner}: ${owner.findingCount}`);
+    }
+  }
+  if (report.sla) {
+    lines.push("");
+    lines.push("SLA:");
+    lines.push(`- breaches=${Array.isArray(report.sla.breachedItems) ? report.sla.breachedItems.length : 0}`);
+  }
   return lines.join("\n");
 }
 
@@ -527,6 +540,18 @@ function formatFleetMarkdown(report) {
         lines.push(`  - \`${repo.repoId || "(unknown)"}\`: ${repo.error}`);
       }
     }
+  }
+  if (report.ownership) {
+    lines.push("");
+    lines.push("## Ownership");
+    lines.push("");
+    lines.push(`- Orphan Findings: \`${safeNumber(report.ownership.orphanFindings, 0)}\``);
+  }
+  if (report.sla) {
+    lines.push("");
+    lines.push("## SLA");
+    lines.push("");
+    lines.push(`- Breaches: \`${Array.isArray(report.sla.breachedItems) ? report.sla.breachedItems.length : 0}\``);
   }
   return lines.join("\n");
 }
@@ -673,6 +698,31 @@ function formatFleetHtml(report) {
       </section>
       <div class="meta">Avg hours to recover: ${recovery.avgHoursToRecovery}</div>
     </section>`;
+  const ownershipBlock = report.ownership
+    ? `<section class="panel exec-panel">
+      <h2>Ownership</h2>
+      <div class="meta">Orphan findings: ${safeNumber(report.ownership.orphanFindings, 0)}</div>
+      <div class="mini-table">
+        <table>
+          <thead><tr><th>Owner</th><th>Findings</th></tr></thead>
+          <tbody>${
+            (report.ownership.topOwners || []).length > 0
+              ? report.ownership.topOwners
+                  .slice(0, 10)
+                  .map((owner) => `<tr><td>${escapeHtml(owner.owner)}</td><td>${safeNumber(owner.findingCount, 0)}</td></tr>`)
+                  .join("")
+              : '<tr><td colspan="2">No owner data.</td></tr>'
+          }</tbody>
+        </table>
+      </div>
+    </section>`
+    : "";
+  const slaBlock = report.sla
+    ? `<section class="panel exec-panel">
+      <h2>SLA</h2>
+      <div class="meta">Breaches: ${Array.isArray(report.sla.breachedItems) ? report.sla.breachedItems.length : 0}</div>
+    </section>`
+    : "";
 
   return `<!doctype html>
 <html lang="en">
@@ -745,6 +795,8 @@ function formatFleetHtml(report) {
     ${directoryBlock}
     ${missingBlock}
     ${recoveryBlock}
+    ${ownershipBlock}
+    ${slaBlock}
     <section class="table-wrap">
       <table>
         <thead>

@@ -109,6 +109,11 @@ function formatText(report) {
   lines.push(
     `Findings: P0=${report.summary.p0} P1=${report.summary.p1} P2=${report.summary.p2} | Score=${report.score}/100`
   );
+  if (report.verificationSummary) {
+    lines.push(
+      `Secret verification: verified=${report.verificationSummary.verifiedSecrets} invalid=${report.verificationSummary.invalidSecrets} unverified=${report.verificationSummary.unverifiedSecrets} skipped=${report.verificationSummary.skippedSecrets}`
+    );
+  }
   if (report.analysis) {
     lines.push(`Analysis: ${formatAnalysisSummary(report.analysis)}`);
   }
@@ -169,6 +174,11 @@ function formatMarkdown(report) {
   }
   lines.push(`- Score: \`${report.score}/100\``);
   lines.push(`- Findings: \`P0=${report.summary.p0} P1=${report.summary.p1} P2=${report.summary.p2}\``);
+  if (report.verificationSummary) {
+    lines.push(
+      `- Secret verification: \`verified=${report.verificationSummary.verifiedSecrets} invalid=${report.verificationSummary.invalidSecrets} unverified=${report.verificationSummary.unverifiedSecrets} skipped=${report.verificationSummary.skippedSecrets}\``
+    );
+  }
   if (report.analysis) {
     lines.push(`- Analysis: \`${formatAnalysisSummary(report.analysis)}\``);
   }
@@ -381,6 +391,11 @@ function formatHtml(report) {
     <div class="metric"><div class="label">P1</div><div class="value">${report.summary.p1}</div></div>
     <div class="metric"><div class="label">P2</div><div class="value">${report.summary.p2}</div></div>
     <div class="metric"><div class="label">Score</div><div class="value">${report.score}</div></div>
+    ${
+      report.verificationSummary
+        ? `<div class="metric"><div class="label">Verified Secrets</div><div class="value">${report.verificationSummary.verifiedSecrets}</div></div>`
+        : ""
+    }
     ${cacheMetric}
   `;
 
@@ -527,6 +542,12 @@ function formatHtml(report) {
       <td>${escapeHtml(findingLocation(finding))}</td>
       <td>${escapeHtml(finding.message)}${
                 finding.suggestion ? `<div class="suggestion">Fix: ${escapeHtml(finding.suggestion)}</div>` : ""
+              }${
+                finding.verification
+                  ? `<div class="suggestion">Verify: ${escapeHtml(finding.verification.status)} (${escapeHtml(
+                      finding.verification.provider || "unknown"
+                    )})</div>`
+                  : ""
               }</td>
     </tr>`
           )

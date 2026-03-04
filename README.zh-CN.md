@@ -25,6 +25,7 @@ Language: [English](README.md) | 简体中文
 - 可选文件级缓存（重复扫描提速）
 - Fleet 执行遥测面板（成功率、错误仓、最慢仓、缓存命中排行）
 - 扫描/Fleet 可观测指标（阶段耗时、慢文件热点、吞吐摘要、执行稳定性）
+- Secret 验证元数据（`finding.verification.*` 与 `verificationSummary.*`）
 
 ## 安装
 
@@ -200,6 +201,20 @@ node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/
 - GitHub Actions：[`docs/guides/github-action.md`](docs/guides/github-action.md)
 - 报告字段迁移：[`docs/guides/report-schema-migration.md`](docs/guides/report-schema-migration.md)
 - 版本发布说明：[`docs/releases/v0.3.0.md`](docs/releases/v0.3.0.md)
+
+关键新增参数：
+- `--verify-secrets`
+- `--verify-provider <auto|github|aws|generic>`
+- `--verify-timeout-ms <number>`
+- `--verify-max <number>`
+- `--verify-safe-mode` / `--no-verify-safe-mode`
+- `--list-rule-packs`
+- `--export-effective-config <file>`
+- Fleet 扫描新增：
+  - `--owners-file <file>`
+  - `--sla-config <file>`
+  - `--emit-pr-comment <file>`
+  - `--emit-weekly-digest <file>`
 
 ## 评分规则
 

@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { createPathMatcher } = require("./utils");
 
 const MERGE_MARKER_RE = /^(<{7}|={7}|>{7})/;
 const TODO_RE = /\b(TODO|FIXME|HACK|XXX)\b/i;
@@ -64,6 +65,9 @@ function pushFinding(findings, ruleCounts, context, finding) {
   if (context.disabledRules.has(String(finding.id || "").trim())) {
     return;
   }
+  if (typeof context.isSuppressed === "function" && context.isSuppressed(finding)) {
+    return;
+  }
 
   const overrideSeverity = context.severityOverrides[finding.id];
   const normalizedSeverity = String(overrideSeverity || "").toLowerCase();
@@ -81,6 +85,39 @@ function pushFinding(findings, ruleCounts, context, finding) {
     ...finding,
     severity
   });
+}
+
+function createSuppressionMatcher(config) {
+  const suppressions = Array.isArray(config && config.suppressions) ? config.suppressions : [];
+  const prepared = suppressions.map((item) => {
+    const ruleId = item && typeof item.ruleId === "string" ? item.ruleId.trim() : null;
+    const pathPattern = item && typeof item.path === "string" ? item.path.trim() : null;
+    const expiresAt = item && typeof item.expiresAt === "string" ? Date.parse(item.expiresAt) : NaN;
+    const pathMatcher = pathPattern ? createPathMatcher([pathPattern]) : null;
+    return {
+      ruleId,
+      pathMatcher,
+      expiresAt
+    };
+  });
+  return (finding) => {
+    for (const suppression of prepared) {
+      if (Number.isFinite(suppression.expiresAt) && suppression.expiresAt < Date.now()) {
+        continue;
+      }
+      if (suppression.ruleId && suppression.ruleId !== String(finding && finding.id ? finding.id : "")) {
+        continue;
+      }
+      if (suppression.pathMatcher) {
+        const relPath = finding && finding.file ? String(finding.file) : "";
+        if (!suppression.pathMatcher(relPath)) {
+          continue;
+        }
+      }
+      return true;
+    }
+    return false;
+  };
 }
 
 function isTestFile(relPath) {
@@ -185,7 +222,8 @@ function runChecks(rootPath, files, config, scanOptions = {}) {
   const context = {
     disabledRules,
     severityOverrides: config.severityOverrides || {},
-    maxFindingsPerRule: config.maxFindingsPerRule
+    maxFindingsPerRule: config.maxFindingsPerRule,
+    isSuppressed: createSuppressionMatcher(config)
   };
   const mergeEnabled = !disabledRules.has("merge-marker");
   const largeFileEnabled = !disabledRules.has("large-file");

@@ -59,6 +59,9 @@ Most scanners stop at "finding issues". Repo Sleep Doctor is designed for **exec
   - `executionSummary.timing`
   - `executionSummary.hotspots`
   - `executionSummary.stability`
+- secret verification metadata:
+  - `finding.verification.*`
+  - `verificationSummary.*`
 
 ## Installation
 
@@ -126,6 +129,21 @@ For full flags and examples, see:
 - [docs/guides/github-action.md](docs/guides/github-action.md)
 - [docs/guides/report-schema-migration.md](docs/guides/report-schema-migration.md)
 - [docs/releases/v0.3.0.md](docs/releases/v0.3.0.md)
+
+Important new flags:
+
+- `--verify-secrets`
+- `--verify-provider <auto|github|aws|generic>`
+- `--verify-timeout-ms <number>`
+- `--verify-max <number>`
+- `--verify-safe-mode` / `--no-verify-safe-mode`
+- `--list-rule-packs`
+- `--export-effective-config <file>`
+- fleet scan outputs:
+  - `--owners-file <file>`
+  - `--sla-config <file>`
+  - `--emit-pr-comment <file>`
+  - `--emit-weekly-digest <file>`
 
 ## Configuration
 

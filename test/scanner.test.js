@@ -91,6 +91,18 @@ test("scanRepository exposes analysis stats for performance visibility", () => {
   assert.equal(typeof report.analysis.summary.linesPerSecond, "number");
 });
 
+test("scanRepository can attach secret verification metadata", () => {
+  const report = scanRepository(badRepo, { maxFiles: 100, verifySecrets: true, verifySafeMode: false });
+  assert.equal(typeof report.verificationSummary, "object");
+  assert.equal(typeof report.verificationSummary.invalidSecrets, "number");
+  const secretFinding = report.findings.find((finding) =>
+    ["private-key-block", "aws-key", "generic-secret"].includes(finding.id)
+  );
+  assert.equal(Boolean(secretFinding), true);
+  assert.equal(typeof secretFinding.verification, "object");
+  assert.equal(typeof secretFinding.verification.status, "string");
+});
+
 test("scanRepository reuses cache file across unchanged runs", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-cache-"));
   writeCacheFixtureRepo(dir);
@@ -380,6 +392,59 @@ test("cli can list built-in presets", () => {
   assert.match(result.stdout, /security/);
 });
 
+test("cli can export effective config and list rule packs", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-rule-pack-"));
+  const packPath = path.join(dir, "org-pack.json");
+  const configPath = path.join(dir, ".repo-sleep-doctor.json");
+  const effectiveOut = path.join(dir, "effective.json");
+
+  fs.writeFileSync(
+    packPath,
+    JSON.stringify(
+      {
+        id: "org-pack",
+        disabledRules: ["todo-comment"],
+        severityOverrides: { "console-call": "p2" }
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+  fs.writeFileSync(
+    configPath,
+    JSON.stringify(
+      {
+        rulePacks: [packPath]
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+
+  const listResult = spawnSync(process.execPath, [cliPath, dir, "--config", configPath, "--list-rule-packs"], {
+    encoding: "utf8",
+    cwd: path.join(__dirname, "..")
+  });
+  assert.equal(listResult.status, 0);
+  assert.match(listResult.stdout, /org-pack/);
+
+  const exportResult = spawnSync(
+    process.execPath,
+    [cliPath, dir, "--config", configPath, "--export-effective-config", effectiveOut],
+    {
+      encoding: "utf8",
+      cwd: path.join(__dirname, "..")
+    }
+  );
+  assert.equal(exportResult.status, 0);
+  const parsed = JSON.parse(fs.readFileSync(effectiveOut, "utf8"));
+  assert.equal(Array.isArray(parsed.loadedRulePacks), true);
+  assert.equal(parsed.loadedRulePacks.length, 1);
+});
+
 test("cli can persist scan history to json file", () => {
   const cliPath = path.join(__dirname, "..", "src", "cli.js");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-history-"));
@@ -484,6 +549,72 @@ test("cli fleet-scan aggregates repositories and writes repo artifacts", () => {
   assert.equal(typeof parsed.executionSummary.hotspots, "object");
   assert.equal(fs.readdirSync(historyDir).length, 2);
   assert.equal(fs.readdirSync(scanOutDir).length, 2);
+});
+
+test("cli fleet-scan can emit PR comment and weekly digest", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-emit-"));
+  const repoA = path.join(dir, "repo-a");
+  const historyDir = path.join(dir, "history");
+  const prComment = path.join(dir, "pr-comment.md");
+  const digest = path.join(dir, "weekly.md");
+  const ownersFile = path.join(dir, "owners.json");
+  const slaFile = path.join(dir, "sla.json");
+  writeFleetFixtureRepo(repoA, { withDebugIssue: true });
+
+  fs.writeFileSync(
+    ownersFile,
+    JSON.stringify(
+      {
+        owners: [{ pathPrefix: "src/", owner: "team-core" }]
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+  fs.writeFileSync(
+    slaFile,
+    JSON.stringify(
+      {
+        p0Hours: 0,
+        p1Hours: 0
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "fleet-scan",
+      repoA,
+      "--history-dir",
+      historyDir,
+      "--owners-file",
+      ownersFile,
+      "--sla-config",
+      slaFile,
+      "--emit-pr-comment",
+      prComment,
+      "--emit-weekly-digest",
+      digest,
+      "--format",
+      "json",
+      "--fail-on",
+      "none"
+    ],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(typeof parsed.ownership, "object");
+  assert.equal(typeof parsed.sla, "object");
+  assert.equal(fs.existsSync(prComment), true);
+  assert.equal(fs.existsSync(digest), true);
 });
 
 test("cli fleet-scan can load repository paths from repos-file", () => {

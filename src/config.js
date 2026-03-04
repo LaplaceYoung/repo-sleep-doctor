@@ -48,7 +48,11 @@ const DEFAULT_CONFIG = Object.freeze({
   maxFiles: 6000,
   maxFindingsPerRule: 80,
   disabledRules: [],
-  severityOverrides: {}
+  severityOverrides: {},
+  extends: [],
+  rulePacks: [],
+  ruleOverrides: {},
+  suppressions: []
 });
 
 function mergeStringArrays(defaultList, customList) {
@@ -106,6 +110,105 @@ function normalizeSeverityOverrides(value) {
   return result;
 }
 
+function readJsonIfExists(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (_error) {
+    throw new Error(`Invalid JSON file: ${filePath}`);
+  }
+}
+
+function normalizeRuleOverrides(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const result = {};
+  for (const [ruleId, entry] of Object.entries(value)) {
+    if (!ruleId || typeof ruleId !== "string") {
+      continue;
+    }
+    const normalized = {
+      enabled: undefined,
+      severity: undefined
+    };
+    if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+      if (typeof entry.enabled === "boolean") {
+        normalized.enabled = entry.enabled;
+      }
+      const severity = normalizeSeverity(entry.severity);
+      if (severity) {
+        normalized.severity = severity;
+      }
+      if (normalized.enabled !== undefined || normalized.severity !== undefined) {
+        result[ruleId.trim()] = normalized;
+      }
+    }
+  }
+  return result;
+}
+
+function normalizeSuppressions(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const next = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+    const ruleId = typeof item.ruleId === "string" ? item.ruleId.trim() : "";
+    const pathPattern = typeof item.path === "string" ? item.path.trim() : "";
+    if (!ruleId && !pathPattern) {
+      continue;
+    }
+    next.push({
+      ruleId: ruleId || null,
+      path: pathPattern || null,
+      reason: typeof item.reason === "string" ? item.reason.trim() : null,
+      expiresAt: typeof item.expiresAt === "string" ? item.expiresAt.trim() : null
+    });
+  }
+  return next;
+}
+
+function normalizePackConfig(raw, packPath) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+  return {
+    id: typeof raw.id === "string" ? raw.id.trim() : path.basename(packPath),
+    disabledRules: mergeStringArrays([], raw.disabledRules),
+    severityOverrides: normalizeSeverityOverrides(raw.severityOverrides),
+    ruleOverrides: normalizeRuleOverrides(raw.ruleOverrides),
+    suppressions: normalizeSuppressions(raw.suppressions)
+  };
+}
+
+function loadRulePacks(rootPath, packPaths) {
+  const loaded = [];
+  for (const item of packPaths || []) {
+    if (typeof item !== "string" || !item.trim()) {
+      continue;
+    }
+    const resolved = path.isAbsolute(item) ? item : path.resolve(rootPath, item);
+    const payload = readJsonIfExists(resolved);
+    if (!payload) {
+      continue;
+    }
+    const normalized = normalizePackConfig(payload, resolved);
+    if (normalized) {
+      loaded.push({
+        path: resolved,
+        ...normalized
+      });
+    }
+  }
+  return loaded;
+}
+
 function readConfigFile(configPath) {
   if (!fs.existsSync(configPath)) {
     return {};
@@ -125,11 +228,45 @@ function loadConfig(rootPath, cliOptions = {}) {
     : path.join(rootPath, ".repo-sleep-doctor.json");
 
   const fileConfig = readConfigFile(configPath);
-  const presetInput = cliOptions.preset !== undefined ? cliOptions.preset : fileConfig.preset;
+  const extendsList = mergeStringArrays([], fileConfig.extends);
+  const presetFromExtends = extendsList.length > 0 ? extendsList[0] : null;
+  const presetInput = cliOptions.preset !== undefined ? cliOptions.preset : fileConfig.preset || presetFromExtends;
   const preset = normalizePreset(presetInput);
+  const rulePacks = mergeStringArrays([], fileConfig.rulePacks);
+  const loadedRulePacks = loadRulePacks(rootPath, rulePacks);
 
   const presetDisabledRules = disabledRulesForPreset(preset);
-  const mergedDisabledRules = mergeStringArrays(presetDisabledRules, fileConfig.disabledRules);
+  let mergedDisabledRules = mergeStringArrays(presetDisabledRules, fileConfig.disabledRules);
+  for (const pack of loadedRulePacks) {
+    mergedDisabledRules = mergeStringArrays(mergedDisabledRules, pack.disabledRules);
+  }
+  const ruleOverrides = normalizeRuleOverrides(fileConfig.ruleOverrides);
+  for (const pack of loadedRulePacks) {
+    Object.assign(ruleOverrides, pack.ruleOverrides);
+  }
+
+  const severityOverrides = normalizeSeverityOverrides(fileConfig.severityOverrides);
+  for (const pack of loadedRulePacks) {
+    Object.assign(severityOverrides, pack.severityOverrides);
+  }
+  for (const [ruleId, override] of Object.entries(ruleOverrides)) {
+    if (override && typeof override === "object") {
+      if (override.enabled === false) {
+        mergedDisabledRules = mergeStringArrays(mergedDisabledRules, [ruleId]);
+      }
+      if (override.enabled === true) {
+        mergedDisabledRules = mergedDisabledRules.filter((item) => item !== ruleId);
+      }
+      if (override.severity) {
+        severityOverrides[ruleId] = override.severity;
+      }
+    }
+  }
+
+  const suppressions = [
+    ...normalizeSuppressions(fileConfig.suppressions),
+    ...loadedRulePacks.flatMap((pack) => pack.suppressions || [])
+  ];
 
   const merged = {
     ignoreDirs: mergeStringArrays(DEFAULT_CONFIG.ignoreDirs, fileConfig.ignoreDirs),
@@ -142,8 +279,13 @@ function loadConfig(rootPath, cliOptions = {}) {
     maxFiles: safePositiveNumber(fileConfig.maxFiles, DEFAULT_CONFIG.maxFiles),
     maxFindingsPerRule: safePositiveNumber(fileConfig.maxFindingsPerRule, DEFAULT_CONFIG.maxFindingsPerRule),
     preset,
+    extends: extendsList,
+    rulePacks,
+    loadedRulePacks,
+    ruleOverrides,
+    suppressions,
     disabledRules: mergeStringArrays(DEFAULT_CONFIG.disabledRules, mergedDisabledRules),
-    severityOverrides: normalizeSeverityOverrides(fileConfig.severityOverrides),
+    severityOverrides,
     configPath: fs.existsSync(configPath) ? configPath : null
   };
 

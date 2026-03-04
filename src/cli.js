@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { compareWithBaseline, createOnlyNewReport, loadBaseline } = require("./baseline");
+const { loadConfig } = require("./config");
 const { VALID_FLEET_FORMATS, buildFleetReport, formatFleetReport } = require("./fleet");
 const { DEFAULT_HISTORY_LIMIT, appendHistory, toHistoryEntry, trimHistory } = require("./history");
 const { PRESET_RULES } = require("./rule-catalog");
@@ -40,6 +41,14 @@ Scan options:
   --history-limit <number>                  Keep only latest N history entries (default: 120)
   --no-gitignore                            Ignore .gitignore and scan all matched files
   --list-presets                            Print built-in presets and their enabled rules
+  --list-rule-packs                         Print loaded rule packs from config
+  --export-effective-config <file>          Export merged effective config to JSON file
+  --verify-secrets                          Verify detected secrets (safe mode by default)
+  --verify-provider <auto|github|aws|generic>  Secret verification provider (default: auto)
+  --verify-timeout-ms <number>              Verification timeout for each secret
+  --verify-max <number>                     Max secret findings to verify (default: 20)
+  --verify-safe-mode                        Safe mode verification (default: enabled)
+  --no-verify-safe-mode                     Disable safe mode for verification
   --help                                    Show help
 
 Fleet options:
@@ -72,6 +81,10 @@ Fleet-scan options:
   --no-gitignore                            Ignore .gitignore for every repository
   --continue-on-error                       Continue scanning other repos even if one repo fails
   --execution-log <file>                    Write fleet execution details to JSON file
+  --owners-file <file>                      Owner mapping JSON for finding ownership aggregation
+  --emit-pr-comment <file>                  Write PR comment markdown summary
+  --emit-weekly-digest <file>               Write weekly digest markdown summary
+  --sla-config <file>                       SLA config JSON for breach summaries
   --fail-on <none|p0|p1|p2>                 Exit 1 if any repository hits threshold (default: p0)
 `;
   process.stdout.write(message.trimStart());
@@ -82,6 +95,20 @@ function printPresets() {
   for (const [name, rules] of Object.entries(PRESET_RULES)) {
     lines.push(`- ${name} (${rules.length} rules)`);
     lines.push(`  ${rules.join(", ")}`);
+  }
+  process.stdout.write(`${lines.join("\n")}\n`);
+}
+
+function printRulePacks(rootPath, configPath) {
+  const config = loadConfig(rootPath, { configPath });
+  const packs = Array.isArray(config.loadedRulePacks) ? config.loadedRulePacks : [];
+  if (packs.length === 0) {
+    process.stdout.write("No rule packs loaded.\n");
+    return;
+  }
+  const lines = ["Loaded rule packs:"];
+  for (const pack of packs) {
+    lines.push(`- ${pack.id} (${pack.path})`);
   }
   process.stdout.write(`${lines.join("\n")}\n`);
 }
@@ -118,6 +145,13 @@ function parseScanArgs(argv) {
     historyLimit: DEFAULT_HISTORY_LIMIT,
     useGitIgnore: undefined,
     listPresets: false,
+    listRulePacks: false,
+    exportEffectiveConfig: null,
+    verifySecrets: false,
+    verifyProvider: "auto",
+    verifyTimeoutMs: 1500,
+    verifyMax: 20,
+    verifySafeMode: true,
     help: false
   };
 
@@ -144,6 +178,22 @@ function parseScanArgs(argv) {
     }
     if (token === "--list-presets") {
       options.listPresets = true;
+      continue;
+    }
+    if (token === "--list-rule-packs") {
+      options.listRulePacks = true;
+      continue;
+    }
+    if (token === "--verify-secrets") {
+      options.verifySecrets = true;
+      continue;
+    }
+    if (token === "--verify-safe-mode") {
+      options.verifySafeMode = true;
+      continue;
+    }
+    if (token === "--no-verify-safe-mode") {
+      options.verifySafeMode = false;
       continue;
     }
 
@@ -208,6 +258,26 @@ function parseScanArgs(argv) {
         index += 1;
         continue;
       }
+      if (token === "--export-effective-config") {
+        options.exportEffectiveConfig = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--verify-provider") {
+        options.verifyProvider = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--verify-timeout-ms") {
+        options.verifyTimeoutMs = Number(requireOptionValue(args, index, token));
+        index += 1;
+        continue;
+      }
+      if (token === "--verify-max") {
+        options.verifyMax = Number(requireOptionValue(args, index, token));
+        index += 1;
+        continue;
+      }
 
       throw new Error(`Unknown option: ${token}`);
     }
@@ -230,6 +300,15 @@ function parseScanArgs(argv) {
   }
   if (!Number.isInteger(options.historyLimit) || options.historyLimit <= 0) {
     throw new Error(`Invalid --history-limit value: ${options.historyLimit}`);
+  }
+  if (!["auto", "github", "aws", "generic"].includes(String(options.verifyProvider))) {
+    throw new Error(`Invalid --verify-provider value: ${options.verifyProvider}`);
+  }
+  if (!Number.isInteger(options.verifyTimeoutMs) || options.verifyTimeoutMs <= 0) {
+    throw new Error(`Invalid --verify-timeout-ms value: ${options.verifyTimeoutMs}`);
+  }
+  if (!Number.isInteger(options.verifyMax) || options.verifyMax < 0) {
+    throw new Error(`Invalid --verify-max value: ${options.verifyMax}`);
   }
   if (options.onlyNew && !options.baselinePath) {
     throw new Error("--only-new requires --baseline <file>");
@@ -456,6 +535,10 @@ function parseFleetScanArgs(argv) {
     useGitIgnore: undefined,
     continueOnError: false,
     executionLog: null,
+    ownersFile: null,
+    emitPrCommentFile: null,
+    emitWeeklyDigestFile: null,
+    slaConfigFile: null,
     failOn: "p0",
     help: false
   };
@@ -579,6 +662,26 @@ function parseFleetScanArgs(argv) {
         index += 1;
         continue;
       }
+      if (token === "--owners-file") {
+        options.ownersFile = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--emit-pr-comment") {
+        options.emitPrCommentFile = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--emit-weekly-digest") {
+        options.emitWeeklyDigestFile = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--sla-config") {
+        options.slaConfigFile = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
       if (token === "--fail-on") {
         options.failOn = requireOptionValue(args, index, token);
         index += 1;
@@ -656,6 +759,127 @@ function writeTextFile(filePath, content) {
   fs.writeFileSync(resolved, content, "utf8");
 }
 
+function readJsonFileOrEmpty(filePath, fallback) {
+  if (!filePath) {
+    return fallback;
+  }
+  const resolved = path.resolve(filePath);
+  if (!fs.existsSync(resolved)) {
+    return fallback;
+  }
+  return JSON.parse(fs.readFileSync(resolved, "utf8"));
+}
+
+function createOwnerResolver(ownerConfig) {
+  const entries = Array.isArray(ownerConfig && ownerConfig.owners) ? ownerConfig.owners : [];
+  const normalized = entries
+    .filter((item) => item && typeof item.pathPrefix === "string" && typeof item.owner === "string")
+    .map((item) => ({
+      pathPrefix: item.pathPrefix.trim().replace(/\\/g, "/"),
+      owner: item.owner.trim()
+    }))
+    .sort((a, b) => b.pathPrefix.length - a.pathPrefix.length);
+  return (relPath) => {
+    const normalizedPath = String(relPath || "").replace(/\\/g, "/");
+    for (const entry of normalized) {
+      if (entry.pathPrefix && normalizedPath.startsWith(entry.pathPrefix)) {
+        return entry.owner;
+      }
+    }
+    return null;
+  };
+}
+
+function summarizeOwnership(repoRuns) {
+  const topOwners = new Map();
+  let orphanFindings = 0;
+  for (const repo of repoRuns || []) {
+    const ownerStats = repo && repo.ownerStats ? repo.ownerStats : {};
+    for (const [owner, count] of Object.entries(ownerStats)) {
+      topOwners.set(owner, (topOwners.get(owner) || 0) + Number(count || 0));
+    }
+    orphanFindings += Number(repo && repo.orphanFindingCount ? repo.orphanFindingCount : 0);
+  }
+  return {
+    topOwners: Array.from(topOwners.entries())
+      .map(([owner, findingCount]) => ({ owner, findingCount }))
+      .sort((a, b) => b.findingCount - a.findingCount || a.owner.localeCompare(b.owner))
+      .slice(0, 20),
+    orphanFindings
+  };
+}
+
+function summarizeSla(repoRuns, slaConfig) {
+  const defaults = { p0Hours: 24, p1Hours: 72 };
+  const thresholds = {
+    p0Hours: Number(slaConfig && slaConfig.p0Hours) > 0 ? Number(slaConfig.p0Hours) : defaults.p0Hours,
+    p1Hours: Number(slaConfig && slaConfig.p1Hours) > 0 ? Number(slaConfig.p1Hours) : defaults.p1Hours
+  };
+  const breachedItems = [];
+  for (const repo of repoRuns || []) {
+    if (!repo || !repo.summary) {
+      continue;
+    }
+    const repoHours = Number(repo.durationMs || 0) / 36e5;
+    if (Number(repo.summary.p0 || 0) > 0 && repoHours > thresholds.p0Hours) {
+      breachedItems.push({
+        repoId: repo.repoId,
+        severity: "p0",
+        elapsedHours: Number(repoHours.toFixed(2)),
+        thresholdHours: thresholds.p0Hours
+      });
+    }
+    if (Number(repo.summary.p1 || 0) > 0 && repoHours > thresholds.p1Hours) {
+      breachedItems.push({
+        repoId: repo.repoId,
+        severity: "p1",
+        elapsedHours: Number(repoHours.toFixed(2)),
+        thresholdHours: thresholds.p1Hours
+      });
+    }
+  }
+  return {
+    thresholds,
+    breachedItems
+  };
+}
+
+function renderPrComment(fleetReport) {
+  const lines = [];
+  lines.push("## Repo Sleep Doctor Fleet Summary");
+  lines.push(`- Repos scanned: ${fleetReport.stats.scannedRepoCount}/${fleetReport.stats.repoCount}`);
+  lines.push(`- Risk repos (P0/P1): ${fleetReport.stats.riskRepos}`);
+  if (fleetReport.executionSummary && fleetReport.executionSummary.stability) {
+    lines.push(`- Success rate: ${fleetReport.executionSummary.stability.successRate}%`);
+  }
+  if (fleetReport.ownership && Array.isArray(fleetReport.ownership.topOwners) && fleetReport.ownership.topOwners.length > 0) {
+    lines.push("");
+    lines.push("### Top Owners");
+    for (const owner of fleetReport.ownership.topOwners.slice(0, 5)) {
+      lines.push(`- ${owner.owner}: ${owner.findingCount} findings`);
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function renderWeeklyDigest(fleetReport) {
+  const lines = [];
+  lines.push("# Weekly Fleet Digest");
+  lines.push(`Generated: ${fleetReport.generatedAt}`);
+  lines.push(`- Repo count: ${fleetReport.stats.repoCount}`);
+  lines.push(`- Scanned repos: ${fleetReport.stats.scannedRepoCount}`);
+  lines.push(`- Avg latest score: ${fleetReport.stats.avgLatestScore}`);
+  lines.push(`- Risk repos: ${fleetReport.stats.riskRepos}`);
+  if (fleetReport.recovery) {
+    lines.push(`- Recovery events: ${fleetReport.recovery.recoveryEvents}`);
+    lines.push(`- Avg scans to recovery: ${fleetReport.recovery.avgScansToRecovery}`);
+  }
+  if (fleetReport.sla && Array.isArray(fleetReport.sla.breachedItems)) {
+    lines.push(`- SLA breaches: ${fleetReport.sla.breachedItems.length}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
 function toBaselineSnapshot(report) {
   const snapshot = { ...report };
   delete snapshot.baseline;
@@ -688,6 +912,9 @@ function main() {
       const existingIds = new Set();
       const historyPaths = [];
       const repoRuns = [];
+      const ownerConfig = readJsonFileOrEmpty(options.ownersFile, { owners: [] });
+      const ownerResolver = createOwnerResolver(ownerConfig);
+      const slaConfig = readJsonFileOrEmpty(options.slaConfigFile, {});
       let hasFailure = false;
       const runStartedAt = new Date().toISOString();
       const runStartMs = Date.now();
@@ -709,7 +936,8 @@ function main() {
             maxFiles: options.maxFiles,
             changedSince: options.changedSince,
             cacheFile,
-            useGitIgnore: options.useGitIgnore
+            useGitIgnore: options.useGitIgnore,
+            verifySecrets: false
           });
 
           const history = appendHistory(historyPath, toHistoryEntry(scanReport), options.historyLimit);
@@ -727,6 +955,17 @@ function main() {
           const failed = shouldFail(scanReport, options.failOn);
           if (failed) {
             hasFailure = true;
+          }
+
+          const ownerStats = {};
+          let orphanFindingCount = 0;
+          for (const finding of scanReport.findings || []) {
+            const owner = ownerResolver(finding && finding.file ? finding.file : "");
+            if (!owner) {
+              orphanFindingCount += 1;
+              continue;
+            }
+            ownerStats[owner] = (ownerStats[owner] || 0) + 1;
           }
 
           repoRuns.push({
@@ -747,6 +986,8 @@ function main() {
               hitRate: scanReport.analysis ? scanReport.analysis.cacheHitRate || 0 : 0,
               status: scanReport.analysis ? scanReport.analysis.cacheStatus || "disabled" : "disabled"
             },
+            ownerStats,
+            orphanFindingCount,
             failed
           });
         } catch (error) {
@@ -793,6 +1034,8 @@ function main() {
         errorRepos,
         repoRuns
       };
+      fleetReport.ownership = summarizeOwnership(repoRuns);
+      fleetReport.sla = summarizeSla(repoRuns, slaConfig);
 
       if (options.executionLog) {
         writeTextFile(options.executionLog, JSON.stringify(fleetReport.execution, null, 2));
@@ -803,6 +1046,12 @@ function main() {
       process.stdout.write("\n");
       if (options.outFile) {
         writeTextFile(options.outFile, fleetOutput);
+      }
+      if (options.emitPrCommentFile) {
+        writeTextFile(options.emitPrCommentFile, renderPrComment(fleetReport));
+      }
+      if (options.emitWeeklyDigestFile) {
+        writeTextFile(options.emitWeeklyDigestFile, renderWeeklyDigest(fleetReport));
       }
       if (hasFailure) {
         process.exitCode = 1;
@@ -838,6 +1087,21 @@ function main() {
       printPresets();
       return;
     }
+    if (options.listRulePacks) {
+      printRulePacks(options.targetPath, options.configPath);
+      return;
+    }
+    if (options.exportEffectiveConfig) {
+      const effective = loadConfig(path.resolve(options.targetPath), {
+        configPath: options.configPath,
+        preset: options.preset,
+        maxFiles: options.maxFiles,
+        useGitIgnore: options.useGitIgnore
+      });
+      writeTextFile(options.exportEffectiveConfig, JSON.stringify(effective, null, 2));
+      process.stdout.write(`${path.resolve(options.exportEffectiveConfig)}\n`);
+      return;
+    }
 
     const currentReport = scanRepository(options.targetPath, {
       configPath: options.configPath,
@@ -845,7 +1109,12 @@ function main() {
       maxFiles: options.maxFiles,
       changedSince: options.changedSince,
       cacheFile: options.useCache ? options.cacheFile : null,
-      useGitIgnore: options.useGitIgnore
+      useGitIgnore: options.useGitIgnore,
+      verifySecrets: options.verifySecrets,
+      verifyProvider: options.verifyProvider,
+      verifyTimeoutMs: options.verifyTimeoutMs,
+      verifyMax: options.verifyMax,
+      verifySafeMode: options.verifySafeMode
     });
 
     let outputReport = currentReport;
