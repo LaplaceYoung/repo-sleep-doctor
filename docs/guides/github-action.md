@@ -76,3 +76,16 @@ Path list mode (for generated repo inventories):
 ```bash
 node src/cli.js fleet-scan --repos-file reports/repos.txt --history-dir reports/fleet-history --format markdown --out reports/fleet.md --fail-on none
 ```
+
+Auto-discovery mode (scan all Git repos under a workspace root):
+
+```bash
+node src/cli.js fleet-scan \
+  --discover-root ../workspace \
+  --discover-depth 4 \
+  --history-dir reports/fleet-history \
+  --format json \
+  --execution-log reports/fleet.execution.json \
+  --continue-on-error \
+  --fail-on p1
+```

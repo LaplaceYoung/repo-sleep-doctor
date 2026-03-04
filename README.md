@@ -67,6 +67,9 @@ node src/cli.js fleet reports/repo-a.history.json reports/repo-b.history.json --
 
 # scan multiple repositories in one run and generate fleet report + per-repo outputs
 node src/cli.js fleet-scan ../repo-a ../repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-repos --scan-format html --format html --out reports/fleet.html --preset release --cache-dir reports/fleet-cache --fail-on p1
+
+# auto-discover git repositories from a workspace root and write execution log
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --history-dir reports/fleet-history --format json --execution-log reports/fleet.execution.json --continue-on-error --fail-on p1
 ```
 
 ## CLI Usage
@@ -104,6 +107,10 @@ Fleet options:
 
 Fleet-scan options:
 - `--repos-file <file>` load repository paths from newline-delimited file
+- `--discover-root <dir>` auto-discover Git repositories under a root directory
+- `--discover-depth <number>` max directory depth for discovery (default 3)
+- `--discover-max <number>` max discovered repositories per root (default 300)
+- `--discover-hidden` include hidden directories during discovery
 - `--history-dir <dir>` per-repo history output directory (default `reports/fleet-history`)
 - `--history-limit <number>` keep latest N history entries per repo (default 120)
 - `--format <text|json|markdown|html>` fleet output format, default `text`
@@ -118,6 +125,8 @@ Fleet-scan options:
 - `--changed-since <git-ref>` scan only repo changes since git ref
 - `--config <file>` use same config file path for each repository
 - `--no-gitignore` disable `.gitignore` matching for every repository
+- `--continue-on-error` keep scanning other repositories when one repository fails
+- `--execution-log <file>` write fleet execution details to JSON
 - `--fail-on <none|p0|p1|p2>` command exits with status 1 when any repository breaches threshold
 
 ## Baseline Workflow
@@ -141,6 +150,9 @@ node src/cli.js fleet repo-a/reports/history.json repo-b/reports/history.json --
 
 # one-command multi-repo scan + history refresh + fleet report
 node src/cli.js fleet-scan repo-a repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format markdown --out reports/fleet.md --fail-on none
+
+# discover-mode fleet scan with resilient execution
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --history-dir reports/fleet-history --format json --execution-log reports/fleet.execution.json --continue-on-error --fail-on p1
 ```
 
 ## Config

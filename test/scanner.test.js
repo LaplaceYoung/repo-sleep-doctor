@@ -50,6 +50,12 @@ function writeFleetFixtureRepo(rootDir, options = {}) {
   }
 }
 
+function initGitRepo(rootDir) {
+  execFileSync("git", ["init", "-b", "main"], { cwd: rootDir });
+  execFileSync("git", ["config", "user.name", "test-user"], { cwd: rootDir });
+  execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: rootDir });
+}
+
 test("scanRepository finds high-severity issues in bad fixture", () => {
   const report = scanRepository(badRepo, {
     maxFiles: 100,
@@ -477,6 +483,8 @@ test("cli fleet-scan can load repository paths from repos-file", () => {
   const historyDir = path.join(dir, "history");
   writeFleetFixtureRepo(repoA);
   writeFleetFixtureRepo(repoB);
+  initGitRepo(repoA);
+  initGitRepo(repoB);
 
   const listPath = path.join(dir, "repos.txt");
   fs.writeFileSync(listPath, `# repositories\n${repoA}\n${repoB}\n`, "utf8");
@@ -511,6 +519,115 @@ test("cli fleet-scan returns exit code 1 when any repo breaches fail-on threshol
   assert.equal(result.status, 1);
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.execution.failedRepos >= 1, true);
+});
+
+test("cli fleet-scan can auto-discover repositories from a root folder", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-discover-"));
+  const workspace = path.join(dir, "workspace");
+  const repoA = path.join(workspace, "group-a", "repo-a");
+  const repoB = path.join(workspace, "group-b", "repo-b");
+  const historyDir = path.join(dir, "history");
+  writeFleetFixtureRepo(repoA);
+  writeFleetFixtureRepo(repoB);
+  initGitRepo(repoA);
+  initGitRepo(repoB);
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "fleet-scan",
+      "--discover-root",
+      workspace,
+      "--discover-depth",
+      "4",
+      "--history-dir",
+      historyDir,
+      "--format",
+      "json",
+      "--fail-on",
+      "none"
+    ],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.execution.totalRepos, 2);
+  assert.equal(parsed.execution.scannedRepos, 2);
+  assert.equal(typeof parsed.execution.discoverRoot, "string");
+});
+
+test("cli fleet-scan writes execution log with repo-level run metrics", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-exec-log-"));
+  const repoA = path.join(dir, "repo-a");
+  const historyDir = path.join(dir, "history");
+  const cacheDir = path.join(dir, "cache");
+  const executionLog = path.join(dir, "execution.json");
+  writeFleetFixtureRepo(repoA);
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "fleet-scan",
+      repoA,
+      "--history-dir",
+      historyDir,
+      "--cache-dir",
+      cacheDir,
+      "--execution-log",
+      executionLog,
+      "--format",
+      "json",
+      "--fail-on",
+      "none"
+    ],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+
+  assert.equal(result.status, 0);
+  const parsedLog = JSON.parse(fs.readFileSync(executionLog, "utf8"));
+  assert.equal(parsedLog.totalRepos, 1);
+  assert.equal(Array.isArray(parsedLog.repoRuns), true);
+  assert.equal(parsedLog.repoRuns.length, 1);
+  assert.equal(typeof parsedLog.repoRuns[0].durationMs, "number");
+  assert.equal(typeof parsedLog.repoRuns[0].cache.hits, "number");
+});
+
+test("cli fleet-scan can continue when one repository path is invalid", () => {
+  const cliPath = path.join(__dirname, "..", "src", "cli.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sleep-doctor-fleet-continue-"));
+  const repoA = path.join(dir, "repo-a");
+  const invalidRepo = path.join(dir, "missing-repo");
+  const historyDir = path.join(dir, "history");
+  writeFleetFixtureRepo(repoA);
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "fleet-scan",
+      repoA,
+      invalidRepo,
+      "--history-dir",
+      historyDir,
+      "--continue-on-error",
+      "--format",
+      "json",
+      "--fail-on",
+      "none"
+    ],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") }
+  );
+
+  assert.equal(result.status, 1);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.execution.totalRepos, 2);
+  assert.equal(parsed.execution.scannedRepos, 1);
+  assert.equal(parsed.execution.errorRepos, 1);
 });
 
 test("fleet report aggregates multiple history sources", () => {

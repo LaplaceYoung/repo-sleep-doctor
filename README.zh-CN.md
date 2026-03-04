@@ -67,6 +67,9 @@ node src/cli.js fleet reports/repo-a.history.json reports/repo-b.history.json --
 
 # 一次执行多仓扫描，自动写历史并生成 fleet 报告
 node src/cli.js fleet-scan ../repo-a ../repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-repos --scan-format html --format html --out reports/fleet.html --preset release --cache-dir reports/fleet-cache --fail-on p1
+
+# 从工作区根目录自动发现 Git 仓库，并输出执行日志
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --history-dir reports/fleet-history --format json --execution-log reports/fleet.execution.json --continue-on-error --fail-on p1
 ```
 
 ## CLI 用法
@@ -104,6 +107,10 @@ Fleet 参数：
 
 Fleet-scan 参数：
 - `--repos-file <file>` 从文本文件加载仓库路径（按行分隔）
+- `--discover-root <dir>` 在目录下自动发现 Git 仓库
+- `--discover-depth <number>` 自动发现最大目录深度（默认 3）
+- `--discover-max <number>` 每个根目录最多发现仓库数量（默认 300）
+- `--discover-hidden` 自动发现时包含隐藏目录
 - `--history-dir <dir>` 每个仓库历史文件输出目录（默认 `reports/fleet-history`）
 - `--history-limit <number>` 每个仓库仅保留最近 N 条历史（默认 120）
 - `--format <text|json|markdown|html>` fleet 输出格式，默认 `text`
@@ -118,6 +125,8 @@ Fleet-scan 参数：
 - `--changed-since <git-ref>` 每个仓库只扫描相对 git 引用的变更
 - `--config <file>` 所有仓库统一使用同一配置文件路径
 - `--no-gitignore` 所有仓库都禁用 `.gitignore` 匹配
+- `--continue-on-error` 单仓失败后继续执行其他仓库
+- `--execution-log <file>` 将 fleet 执行详情写入 JSON 文件
 - `--fail-on <none|p0|p1|p2>` 只要任一仓库达到阈值，命令退出码为 1
 
 ## 基线工作流
@@ -141,6 +150,9 @@ node src/cli.js fleet repo-a/reports/history.json repo-b/reports/history.json --
 
 # 一条命令完成多仓扫描 + 历史刷新 + fleet 汇总
 node src/cli.js fleet-scan repo-a repo-b --history-dir reports/fleet-history --scan-out-dir reports/fleet-reports --scan-format html --format markdown --out reports/fleet.md --fail-on none
+
+# 自动发现模式 + 容错执行日志
+node src/cli.js fleet-scan --discover-root ../workspace --discover-depth 4 --history-dir reports/fleet-history --format json --execution-log reports/fleet.execution.json --continue-on-error --fail-on p1
 ```
 
 ## 配置

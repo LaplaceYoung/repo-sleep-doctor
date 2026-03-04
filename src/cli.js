@@ -50,6 +50,10 @@ Fleet options:
 
 Fleet-scan options:
   --repos-file <file>                       Read repository paths from newline-delimited file
+  --discover-root <dir>                     Auto-discover Git repositories under a root directory
+  --discover-depth <number>                 Max directory depth for discovery (default: 3)
+  --discover-max <number>                   Max repositories discovered per root (default: 300)
+  --discover-hidden                         Include hidden directories during discovery
   --history-dir <dir>                       Directory for per-repo history files (default: reports/fleet-history)
   --history-limit <number>                  Keep only latest N history entries per repo (default: 120)
   --format <text|json|markdown|html>        Fleet report format (default: text)
@@ -64,6 +68,8 @@ Fleet-scan options:
   --changed-since <git-ref>                 Scan only files changed since git ref for each repository
   --config <file>                           Use same config file path for each repository
   --no-gitignore                            Ignore .gitignore for every repository
+  --continue-on-error                       Continue scanning other repos even if one repo fails
+  --execution-log <file>                    Write fleet execution details to JSON file
   --fail-on <none|p0|p1|p2>                 Exit 1 if any repository hits threshold (default: p0)
 `;
   process.stdout.write(message.trimStart());
@@ -307,6 +313,79 @@ function parsePathListFile(filePath) {
     .filter((line) => line && !line.startsWith("#"));
 }
 
+const DEFAULT_DISCOVERY_SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", "coverage", ".next", ".turbo"]);
+
+function isGitRepositoryDirectory(dirPath) {
+  const marker = path.join(dirPath, ".git");
+  if (!fs.existsSync(marker)) {
+    return false;
+  }
+  try {
+    const stats = fs.statSync(marker);
+    return stats.isDirectory() || stats.isFile();
+  } catch (_error) {
+    return false;
+  }
+}
+
+function discoverGitRepositories(rootDir, options = {}) {
+  const resolvedRoot = path.resolve(rootDir);
+  if (!fs.existsSync(resolvedRoot) || !fs.statSync(resolvedRoot).isDirectory()) {
+    throw new Error(`Invalid discover root directory: ${resolvedRoot}`);
+  }
+
+  const maxDepth = options.maxDepth;
+  const includeHidden = Boolean(options.includeHidden);
+  const maxRepos = options.maxRepos;
+  const discovered = [];
+  const stack = [{ dir: resolvedRoot, depth: 0 }];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    const currentDir = current.dir;
+    const currentDepth = current.depth;
+
+    if (isGitRepositoryDirectory(currentDir)) {
+      discovered.push(currentDir);
+      if (discovered.length >= maxRepos) {
+        break;
+      }
+      continue;
+    }
+
+    if (currentDepth >= maxDepth) {
+      continue;
+    }
+
+    let entries = [];
+    try {
+      entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      entries.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (_error) {
+      continue;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      const name = entry.name;
+      if (!includeHidden && name.startsWith(".")) {
+        continue;
+      }
+      if (DEFAULT_DISCOVERY_SKIP_DIRS.has(name.toLowerCase())) {
+        continue;
+      }
+      stack.push({
+        dir: path.join(currentDir, name),
+        depth: currentDepth + 1
+      });
+    }
+  }
+
+  return discovered.sort((a, b) => a.localeCompare(b));
+}
+
 function sanitizeRepoId(repoPath, existing) {
   const base = path.basename(path.resolve(repoPath)) || "repo";
   const normalized = base
@@ -346,6 +425,10 @@ function parseFleetScanArgs(argv) {
   const options = {
     repoPaths: [],
     reposFile: null,
+    discoverRoot: null,
+    discoverDepth: 3,
+    discoverMax: 300,
+    discoverHidden: false,
     historyDir: path.join("reports", "fleet-history"),
     historyLimit: DEFAULT_HISTORY_LIMIT,
     format: "text",
@@ -360,6 +443,8 @@ function parseFleetScanArgs(argv) {
     changedSince: null,
     configPath: null,
     useGitIgnore: undefined,
+    continueOnError: false,
+    executionLog: null,
     failOn: "p0",
     help: false
   };
@@ -374,10 +459,33 @@ function parseFleetScanArgs(argv) {
       options.useGitIgnore = false;
       continue;
     }
+    if (token === "--discover-hidden") {
+      options.discoverHidden = true;
+      continue;
+    }
+    if (token === "--continue-on-error") {
+      options.continueOnError = true;
+      continue;
+    }
 
     if (token.startsWith("--")) {
       if (token === "--repos-file") {
         options.reposFile = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--discover-root") {
+        options.discoverRoot = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
+      if (token === "--discover-depth") {
+        options.discoverDepth = Number(requireOptionValue(args, index, token));
+        index += 1;
+        continue;
+      }
+      if (token === "--discover-max") {
+        options.discoverMax = Number(requireOptionValue(args, index, token));
         index += 1;
         continue;
       }
@@ -446,6 +554,11 @@ function parseFleetScanArgs(argv) {
         index += 1;
         continue;
       }
+      if (token === "--execution-log") {
+        options.executionLog = requireOptionValue(args, index, token);
+        index += 1;
+        continue;
+      }
       if (token === "--fail-on") {
         options.failOn = requireOptionValue(args, index, token);
         index += 1;
@@ -458,7 +571,6 @@ function parseFleetScanArgs(argv) {
   }
 
   const filePaths = options.reposFile ? parsePathListFile(options.reposFile) : [];
-  options.repoPaths = [...options.repoPaths, ...filePaths];
 
   if (options.scanOutDir && !options.scanFormat) {
     options.scanFormat = "html";
@@ -476,6 +588,12 @@ function parseFleetScanArgs(argv) {
   if (!Number.isInteger(options.historyLimit) || options.historyLimit <= 0) {
     throw new Error(`Invalid --history-limit value: ${options.historyLimit}`);
   }
+  if (!Number.isInteger(options.discoverDepth) || options.discoverDepth < 0) {
+    throw new Error(`Invalid --discover-depth value: ${options.discoverDepth}`);
+  }
+  if (!Number.isInteger(options.discoverMax) || options.discoverMax <= 0) {
+    throw new Error(`Invalid --discover-max value: ${options.discoverMax}`);
+  }
   if (!Number.isInteger(options.topRepos) || options.topRepos <= 0) {
     throw new Error(`Invalid --top-repos value: ${options.topRepos}`);
   }
@@ -485,8 +603,28 @@ function parseFleetScanArgs(argv) {
   if (options.maxFiles !== undefined && (!Number.isInteger(options.maxFiles) || options.maxFiles <= 0)) {
     throw new Error(`Invalid --max-files value: ${options.maxFiles}`);
   }
+
+  const discoveredPaths = options.discoverRoot
+    ? discoverGitRepositories(options.discoverRoot, {
+        maxDepth: options.discoverDepth,
+        includeHidden: options.discoverHidden,
+        maxRepos: options.discoverMax
+      })
+    : [];
+
+  options.repoPaths = [...options.repoPaths, ...filePaths, ...discoveredPaths];
+
+  const dedup = new Map();
+  for (const repoPath of options.repoPaths) {
+    const resolved = path.resolve(repoPath);
+    if (!dedup.has(resolved)) {
+      dedup.set(resolved, resolved);
+    }
+  }
+  options.repoPaths = Array.from(dedup.values());
+
   if (!options.help && options.repoPaths.length === 0) {
-    throw new Error("fleet-scan requires at least one repository path (or --repos-file)");
+    throw new Error("fleet-scan requires repositories via paths, --repos-file, or --discover-root");
   }
 
   return options;
@@ -522,60 +660,114 @@ function main() {
       const historyPaths = [];
       const repoRuns = [];
       let hasFailure = false;
+      const runStartedAt = new Date().toISOString();
+      const runStartMs = Date.now();
 
       for (const inputPath of options.repoPaths) {
         const resolvedRepoPath = path.resolve(inputPath);
-        if (!fs.existsSync(resolvedRepoPath) || !fs.statSync(resolvedRepoPath).isDirectory()) {
-          throw new Error(`Invalid repository directory: ${resolvedRepoPath}`);
-        }
-
         const repoId = sanitizeRepoId(resolvedRepoPath, existingIds);
-        const historyPath = path.resolve(options.historyDir, `${repoId}.history.json`);
-        const cacheFile = options.cacheDir ? path.resolve(options.cacheDir, `${repoId}.scan-cache.json`) : null;
-        const scanReport = scanRepository(resolvedRepoPath, {
-          configPath: options.configPath,
-          preset: options.preset,
-          maxFiles: options.maxFiles,
-          changedSince: options.changedSince,
-          cacheFile,
-          useGitIgnore: options.useGitIgnore
-        });
+        const repoStartMs = Date.now();
+        try {
+          if (!fs.existsSync(resolvedRepoPath) || !fs.statSync(resolvedRepoPath).isDirectory()) {
+            throw new Error(`Invalid repository directory: ${resolvedRepoPath}`);
+          }
 
-        const history = appendHistory(historyPath, toHistoryEntry(scanReport), options.historyLimit);
-        scanReport.history = history;
-        historyPaths.push(historyPath);
+          const historyPath = path.resolve(options.historyDir, `${repoId}.history.json`);
+          const cacheFile = options.cacheDir ? path.resolve(options.cacheDir, `${repoId}.scan-cache.json`) : null;
+          const scanReport = scanRepository(resolvedRepoPath, {
+            configPath: options.configPath,
+            preset: options.preset,
+            maxFiles: options.maxFiles,
+            changedSince: options.changedSince,
+            cacheFile,
+            useGitIgnore: options.useGitIgnore
+          });
 
-        if (options.scanOutDir && options.scanFormat) {
-          const extension = extensionForFormat(options.scanFormat);
-          const outputPath = path.resolve(options.scanOutDir, `${repoId}.scan.${extension}`);
-          const output = formatReport(scanReport, options.scanFormat);
-          writeTextFile(outputPath, output);
-        }
+          const history = appendHistory(historyPath, toHistoryEntry(scanReport), options.historyLimit);
+          scanReport.history = history;
+          historyPaths.push(historyPath);
 
-        const failed = shouldFail(scanReport, options.failOn);
-        if (failed) {
+          let scanOutputPath = null;
+          if (options.scanOutDir && options.scanFormat) {
+            const extension = extensionForFormat(options.scanFormat);
+            scanOutputPath = path.resolve(options.scanOutDir, `${repoId}.scan.${extension}`);
+            const output = formatReport(scanReport, options.scanFormat);
+            writeTextFile(scanOutputPath, output);
+          }
+
+          const failed = shouldFail(scanReport, options.failOn);
+          if (failed) {
+            hasFailure = true;
+          }
+
+          repoRuns.push({
+            repoId,
+            path: resolvedRepoPath,
+            status: failed ? "failed-threshold" : "passed",
+            score: scanReport.score,
+            summary: scanReport.summary,
+            findingCount: scanReport.summary.total,
+            fileCount: scanReport.fileCount,
+            durationMs: Date.now() - repoStartMs,
+            historyPath,
+            scanOutputPath,
+            cache: {
+              file: cacheFile,
+              hits: scanReport.analysis ? scanReport.analysis.cacheHits || 0 : 0,
+              misses: scanReport.analysis ? scanReport.analysis.cacheMisses || 0 : 0,
+              hitRate: scanReport.analysis ? scanReport.analysis.cacheHitRate || 0 : 0,
+              status: scanReport.analysis ? scanReport.analysis.cacheStatus || "disabled" : "disabled"
+            },
+            failed
+          });
+        } catch (error) {
           hasFailure = true;
+          repoRuns.push({
+            repoId,
+            path: resolvedRepoPath,
+            status: "error",
+            score: null,
+            summary: null,
+            findingCount: null,
+            fileCount: null,
+            durationMs: Date.now() - repoStartMs,
+            historyPath: null,
+            scanOutputPath: null,
+            cache: null,
+            error: error.message,
+            failed: true
+          });
+          if (!options.continueOnError) {
+            throw error;
+          }
         }
-
-        repoRuns.push({
-          repoId,
-          path: resolvedRepoPath,
-          score: scanReport.score,
-          summary: scanReport.summary,
-          failed
-        });
       }
 
       const fleetReport = buildFleetReport(historyPaths, {
         topRepos: options.topRepos,
         topRules: options.topRules
       });
+      const failedRepos = repoRuns.filter((repo) => repo.failed).length;
+      const errorRepos = repoRuns.filter((repo) => repo.status === "error").length;
+      const scannedRepos = repoRuns.filter((repo) => repo.status !== "error").length;
       fleetReport.execution = {
+        startedAt: runStartedAt,
+        finishedAt: new Date().toISOString(),
+        durationMs: Date.now() - runStartMs,
+        discoverRoot: options.discoverRoot ? path.resolve(options.discoverRoot) : null,
+        discoverDepth: options.discoverRoot ? options.discoverDepth : null,
         failOn: options.failOn,
+        continueOnError: options.continueOnError,
         totalRepos: repoRuns.length,
-        failedRepos: repoRuns.filter((repo) => repo.failed).length,
+        scannedRepos,
+        failedRepos,
+        errorRepos,
         repoRuns
       };
+
+      if (options.executionLog) {
+        writeTextFile(options.executionLog, JSON.stringify(fleetReport.execution, null, 2));
+      }
 
       const fleetOutput = formatFleetReport(fleetReport, options.format);
       process.stdout.write(fleetOutput);
